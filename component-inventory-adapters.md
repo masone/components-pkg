@@ -16,7 +16,7 @@ the exact codemod spec.
 |---|---|---|---|---|---|
 | **Box** | ④ | `textColor`→`color`; `spacing`→`gap`; keeps `color`; polymorphism `as` (string vs component) with `asChild` branch; NextLink compat (`href`, `prefetch`) — passes `href` on string `as`, uses `asChild` + `<AsComp href prefetch>` for component `as` | **no** (real polymorphism + link-injection logic, not a rename) | reclassify → shared component (no Chakra API expected) | high |
 | **Button** | ① | `isDisabled`→`disabled` (`disabled: isDisabled ?? disabled`); `isLoading`→`loading` | **yes** | remove → v3-native | low |
-| **Checkbox** | ② | `isChecked`→`checked`; `isDisabled`→`disabled`; `isInvalid`→`invalid`; `onChange(event)` rebuilt from v3 `onCheckedChange(details)` — synthetic `ChangeEvent` with `target={type:'checkbox',name,checked,value:''}`; requires `name` | **yes-with-decision** (RHF / synthetic-event) | remove → v3-native (after RHF decision) | high |
+| **Checkbox** | ② | `isChecked`→`checked`; `isDisabled`→`disabled`; `isInvalid`→`invalid`; `onChange(event)` rebuilt from v3 `onCheckedChange(details)` — synthetic `ChangeEvent` with `target={type:'checkbox',name,checked,value:''}`; requires `name` | **yes-with-decision** (RHF / synthetic-event) | **decision outstanding** (see ② options) | high |
 | **Chip** | ① | `isActive`→`selected`; `isDisabled`→`disabled` (default `false`) | **yes** | remove → v3-native | low |
 | **Divider** | ① | `Divider`→`Separator` (props passed straight through as `SeparatorProps`) | **yes** | remove → v3-native | low |
 | **FormControl** | ① (component rename) | `FormControl`→`Field`; `isRequired`→`required`; `isDisabled`→`disabled`; `id`/`label`/`errorMessage`/`size`/`tooltip`/`hint`/`labelButtonText`/`labelButtonOnClick` pass through unchanged | **yes** | remove → v3-native | low |
@@ -37,7 +37,7 @@ the exact codemod spec.
 | **SimpleGrid** | ① | `spacing`→`gap`; `spacingX`→`gapX`; `spacingY`→`gapY`; `columns` passthrough | **yes** | remove → v3-native | low |
 | **Skeleton** | ① | `isLoaded`→`loading` **inverted**: `loading={!isLoaded}` | **yes** (mind the inversion in the codemod) | remove → v3-native | low |
 | **Stack** | ① | `spacing`→`gap` (over raw Chakra `Stack`) | **yes** | remove → v3-native | low |
-| **Switch** | ② | `isChecked`→`checked`; `isDisabled`→`disabled`; `onChange(event)` rebuilt from v3 `onCheckedChange(details)` — synthetic `ChangeEvent` with `target={checked}` only (no `name`/`value`) | **yes-with-decision** (RHF / synthetic-event) | remove → v3-native (after RHF decision) | high |
+| **Switch** | ② | `isChecked`→`checked`; `isDisabled`→`disabled`; `onChange(event)` rebuilt from v3 `onCheckedChange(details)` — synthetic `ChangeEvent` with `target={checked}` only (no `name`/`value`) | **yes-with-decision** (RHF / synthetic-event) | **decision outstanding** (see ② options) | high |
 | **Tab** (`Tab/Tab.tsx`) | ① | `isDisabled`→`disabled`; `marginX`, `value` passthrough | **yes** | remove → v3-native | low |
 | **Tabs** (`Tab/Tabs.tsx`) | ③ | `onChange(value:string)` reshaped from v3 `onValueChange({value})` — unwraps the detail object; **not** a synthetic `ChangeEvent` (plain string, no RHF collision) | **yes** | remove → v3-native | low |
 | **Table** | ③ | flat→compound: `Table`=`Table.Root`, `Thead`=`Table.Header`, `Tbody`=`Table.Body`, `Tr`=`Table.Row`, `Tfoot`=`Table.Footer`, `Th`=`Table.ColumnHeader`, `Td`=`Table.Cell`; `isNumeric`→`textAlign:'end'` (on `Th`/`Td`) | **yes** | remove → v3-native | medium |
@@ -62,13 +62,25 @@ helpers, not just a rename).
 
 **③ reshapes — see the detailed migration section below.**
 
-**Need a decision, not a codemod — the RHF / synthetic-event crux (②):** **Checkbox** and
-**Switch**. Both fabricate a fake `React.ChangeEvent<HTMLInputElement>` from v3's
-`onCheckedChange(details)` so legacy `onChange(event)` handlers and **react-hook-form** keep
-working. Removing them forces every form + RHF register/Controller onto v3's
-`onCheckedChange({checked})` model. This is the hardest part of the removal; it is **not**
-mechanical — it needs an explicit RHF-integration decision (e.g. RHF `Controller` wrapping
-`onCheckedChange`) before the adapter can go. Effort: high.
+**② — the RHF / synthetic-event crux (Checkbox, Switch): final decision OUTSTANDING.** Both
+fabricate a fake `React.ChangeEvent<HTMLInputElement>` from v3's `onCheckedChange(details)` so
+legacy `onChange(event)` handlers and **react-hook-form** keep working. Two options; the call
+is **not yet made** (part of the separate RHF workstream):
+
+- **Option A — remove → v3-native.** Migrate every form + RHF onto v3's
+  `onCheckedChange({checked})` (e.g. RHF `Controller`). Fully idiomatic, but high effort and
+  touches all forms — needs the RHF-integration decision first.
+- **Option B — keep as legitimate custom `components`, retain the bridge.** The synthetic-
+  event `onChange` (+ `ref` forwarding) is a justified reason to wrap, kept for now so RHF is
+  untouched. Make everything *else* Chakra-esque: rename the v2 dialect (`isChecked→checked`,
+  `isDisabled→disabled`, `isInvalid→invalid`) and expose native Chakra props (optionally also
+  expose `onCheckedChange` for non-RHF consumers). Fold the bridge into
+  `components/checkbox` / `components/switch`, drop the adapter layer. This **de-risks** ②:
+  the prop renames proceed **now** (like ①, since RHF doesn't touch those props); only the
+  eventual *bridge removal* waits on the RHF decision. Watch: the component must keep
+  forwarding `ref` and building a faithful `target` while the rest is cleaned up.
+
+**Final decision: outstanding.**
 
 **④ — not a flat "reclassify & keep" (see "④ disposition — refined" below):** it splits into
 Group A (custom behavior on a Chakra primitive — `Box`, `Link`, `LinkOverlay`, `Popover`),
