@@ -28,6 +28,7 @@ prompt summarizes them but they are authoritative:
 - `api-conventions.md` — prop conventions (sourcing rule, shared vocabulary, archetypes)
 - `package-structure.md` — the three-package target model
 - `components-classification.md` — a first-pass classification to validate/refine
+- `adapter-removal.md` — the four kinds of adapter (①–④) and the migrate-or-reclassify rule
 - `idiomatic-adoption-assessment.md`, `chakra-idiomatic-vs-wrapper.md`,
   `design-tensions.md`, `components-structure-research.md` — deeper background
 
@@ -60,9 +61,10 @@ Disambiguation tests:
   a specific entity's fields (VehicleReference) → feature.
 
 Special handling:
-- `src/components/adapter/*` — **legacy Chakra-v2→v3 compatibility shims** (they rename
-  `isDisabled`→`disabled`, `spacing`→`gap`, etc.), slated for removal. List them as a group,
-  note the concept, do **not** deep-analyze each.
+- `src/components/adapter/*` — **legacy Chakra-v2→v3 compatibility shims**, slated for
+  removal (this removal is a precondition for the wider cleanup). **Catalogue each adapter
+  individually** — see the dedicated adapter task in Step 4.D. Do not fold them into the
+  main per-component inventory.
 - Infra (`themeProvider`, `translationProvider`, `icons`) — mark "out of scope / infra."
 
 ## Step 2 — Intended prop conventions (measure the delta against these)
@@ -131,6 +133,34 @@ For each folder under `src/components/*` (excluding adapters/infra as noted):
   manually-applied recipes, features owning recipes).
 - Notable outliers (e.g. Button, Input) and the blurry classification calls, with your call
   + reasoning.
+
+### D. Adapter catalogue (`src/components/adapter/*`)
+
+Removing the adapters is a **precondition** for the wider cleanup, so this catalogue is the
+removal plan. Read `adapter-removal.md` first for the four-kind framework, then produce a
+**row per adapter**:
+
+| Adapter | Kind | Prop / API map (legacy → v3) | Reasonably migratable to v3? | Action | Effort |
+|---|---|---|---|---|---|
+
+- **Kind** — classify each into one of:
+  - **① pure v2→v3 rename** (e.g. `Divider`→`Separator`; `Text`: `isTruncated→truncate`)
+  - **② event-model bridge** — rebuilds a synthetic `ChangeEvent` from v3 detail callbacks
+    (e.g. `Switch`/`Checkbox`/`Input`); collides with react-hook-form
+  - **③ component rename / API reshape** (e.g. `Modal`→`Dialog`, `Table` flat→compound)
+  - **④ genuine behavior mislabeled as an adapter** (e.g. `Popover`'s hover/touch fallback,
+    `Hide`/`Show`, `Box` polymorphism, `Link`, the filter components)
+- **Prop / API map** — the exact legacy→v3 mapping (this is the codemod spec). Quote real props.
+- **Reasonably migratable to v3?** — yes / yes-with-a-decision / no.
+- **Action** — `remove → v3-native` (①③, and ② once the RHF decision is made) **or**
+  `reclassify → shared component (no Chakra API expected)` (④, and any ② where v3 migration
+  isn't reasonable). Per the rule: if it can't reasonably migrate to a v3 interface, treat it
+  as a shared component, **not** a Chakra primitive.
+- **Effort** — low / medium / high, and call out the **react-hook-form / synthetic-event**
+  decision explicitly wherever ② applies.
+
+Close with a short summary: counts per kind, which adapters are trivial codemods vs which
+need decisions (RHF), and which are really components to reclassify.
 
 ## Step 5 — How to work
 
