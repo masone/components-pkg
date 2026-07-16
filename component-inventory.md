@@ -9,12 +9,12 @@ prop types; all are leaks for a component/feature under `api-conventions.md`._
 
 ## A. Summary
 
-| Component / export group | Category | Pattern-correct | API conformance | Verdict |
-|---|---|---:|---:|---|
-| Box, Flex, Stack, Grid, SimpleGrid, Center, AspectRatio | primitive | ❌ | ✅ | Only Box/AspectRatio are transparent; the rest curate Chakra props. |
-| Alert, Avatar, Badge, Button, Card, Checkbox, Chip, CloseButton, Collapse, ColorPicker, Count, DatePicker, Dialog, Drawer, Field, Heading, HoverCard, Input, Link, LinkOverlay, List, Menu, Pagination, Popover, Progress, Radio, RangeSlider, Rating, Select, Separator, Skeleton, Spinner, Switch, Tab, Text, Textarea, TimePicker, Tooltip | component | ⚠️ | ❌ | Generic, but most leak Chakra types/style props or use inconsistent event/controlled names. |
-| ArticleTeaser, Carousel, CheckboxFilter, DiscreteSlider, EnergyLabel, ErrorPage, filter patterns, FocusedHeader, FormControlSection, FullHeight, GalleryHeader, layouts, MissingImage, MobileOnlyAccordion, Navigation, range-filter inputs, Section, SimpleHeader, tenantSelection, TopListingBadge, TopVehicleSharedBadge, VehicleReference | feature | ⚠️ | ❌ | Semantic/domain composition predominates, but several surfaces expose Chakra layout/style types and several own recipes. |
-| themeProvider, translationProvider, icons | out of scope / infra | — | — | Providers/assets, not catalogued as components. |
+| Component / export group | Category | Pattern-correct | API conformance | Verdict | Action |
+|---|---|---:|---:|---|---|
+| Box, Flex, Stack, Grid, SimpleGrid, Center, AspectRatio | primitive | ❌ | ✅ | Use one uniform primitive contract. | **Direct 1:1 Chakra re-exports** |
+| Alert, Avatar, Badge, Button, Card, Checkbox, Chip, CloseButton, Collapse, ColorPicker, Count, DatePicker, Dialog, Drawer, Field, Heading, HoverCard, Input, Link, LinkOverlay, List, Menu, Pagination, Popover, Progress, Radio, RangeSlider, Rating, Select, Separator, Skeleton, Spinner, Switch, Tab, Text, Textarea, TimePicker, Tooltip | component | ⚠️ | ❌ | Generic, but most leak Chakra types/style props or use inconsistent event/controlled names. | — |
+| ArticleTeaser, Carousel, CheckboxFilter, DiscreteSlider, EnergyLabel, ErrorPage, filter patterns, FocusedHeader, FormControlSection, FullHeight, GalleryHeader, layouts, MissingImage, MobileOnlyAccordion, Navigation, range-filter inputs, Section, SimpleHeader, tenantSelection, TopListingBadge, TopVehicleSharedBadge, VehicleReference | feature | ⚠️ | ❌ | Semantic/domain composition predominates, but several surfaces expose Chakra layout/style types and several own recipes. | — |
+| themeProvider, translationProvider, icons | out of scope / infra | — | — | Providers/assets, not catalogued as components. | — |
 
 The confirmed set is **7 primitives, 37 components, and 25 feature/composition exports**
 (some folders export multiple public components). The strict “one folder = one component”
@@ -26,15 +26,15 @@ folders; their public exports are called out below. On the folder-level verdict,
 
 ### Primitives
 
-| Component | Today’s props surface and nature | Intended interface / delta | Pattern-correctness and verdict |
-|---|---|---|---|
-| **Box** | Exact `BoxProps` re-export. Transparent Chakra API. | Keep exact Chakra API. | ✅ Correct transparent re-export. |
-| **AspectRatio** | `AspectRatioProps` re-export, assigned alias. | Keep exact Chakra API. | ✅ Thin alias only; a direct re-export would be even cleaner. |
-| **Flex** | `Omit<ChakraFlexProps, 'gap'\|'columnGap'\|'rowGap'>`. | Exact Chakra `FlexProps`; restore gaps and remove wrapper. | ❌ Violates transparent primitive rule through `Omit`. |
-| **Stack** | `Pick<ChakraStackProps, align, children, direction, justify, gap, wrap, margin*, padding*, separator, alignItems, width>`. | Exact Chakra `StackProps` plus `StackSeparator` direct re-export. | ❌ Whitelist and v2 `align` leak/omission contradict transparency. |
-| **Grid** | Chakra-derived exported `GridProps`/thin wrapper (including style props). | Exact Chakra `Grid` re-export. | ⚠️ Treat as a transparent barrel; remove any wrapper/default logic. |
-| **SimpleGrid** | `Pick<SimpleGridProps, minChildWidth, columns, children, alignItems, width, rowGap, gap>`. | Exact Chakra `SimpleGridProps`. | ❌ Whitelist is an API transformation. |
-| **Center** | `Pick<ChakraCenterProps, children, padding>`. | Exact Chakra `CenterProps`. | ❌ Whitelist is an API transformation. |
+| Component | Today’s props surface and nature | Intended interface / delta | Pattern-correctness and verdict | Action |
+|---|---|---|---|---|
+| **Box** | Exact `BoxProps` re-export. Transparent Chakra API. | Keep exact Chakra API. | ✅ Correct transparent re-export. | Keep as a direct re-export. |
+| **AspectRatio** | `AspectRatioProps` re-export, assigned alias. | Keep exact Chakra API. | ✅ Thin alias only; a direct re-export would be even cleaner. | Replace alias with direct re-export. |
+| **Flex** | `Omit<ChakraFlexProps, 'gap'\|'columnGap'\|'rowGap'>`. | Exact Chakra `FlexProps`; restore gaps and remove wrapper. | ❌ Violates transparent primitive rule through `Omit`. | Replace with direct Chakra re-export. |
+| **Stack** | `Pick<ChakraStackProps, align, children, direction, justify, gap, wrap, margin*, padding*, separator, alignItems, width>`. | Exact Chakra `StackProps` plus `StackSeparator` direct re-export. | ❌ Whitelist and v2 `align` leak/omission contradict transparency. | Replace Stack and StackSeparator with direct Chakra re-exports. |
+| **Grid** | Chakra-derived exported `GridProps`/thin wrapper (including style props). | Exact Chakra `Grid` re-export. | ⚠️ Display-name alias only. | Replace Grid and GridItem with direct Chakra re-exports; preserve Storybook naming through metadata. |
+| **SimpleGrid** | `Pick<SimpleGridProps, minChildWidth, columns, children, alignItems, width, rowGap, gap>`. | Exact Chakra `SimpleGridProps`. | ❌ Whitelist is an API transformation. | Replace with direct Chakra re-export. |
+| **Center** | `Pick<ChakraCenterProps, children, padding>`. | Exact Chakra `CenterProps`. | ❌ Whitelist is an API transformation. | Replace with direct Chakra re-export. |
 
 ### Generic components
 
