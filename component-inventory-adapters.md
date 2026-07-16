@@ -60,9 +60,7 @@ SimpleGrid (`spacing*→gap*`), Skeleton (`isLoaded→loading`, **inverted**), S
 (`onChange←onValueChange`). List is low–medium (also ships `UnorderedList`/`OrderedList`
 helpers, not just a rename).
 
-**Medium (③, call-site reshape):** Modal (`isOpen/onClose`→`open/onOpenChange`,
-`ModalCloseButton`→`Dialog.CloseTrigger`), Table (flat `Thead/Tbody/Th/Td` →
-`Table.Header/Body/ColumnHeader/Cell`, `isNumeric`→`textAlign:'end'`).
+**③ reshapes — see the detailed migration section below.**
 
 **Need a decision, not a codemod — the RHF / synthetic-event crux (②):** **Checkbox** and
 **Switch**. Both fabricate a fake `React.ChangeEvent<HTMLInputElement>` from v3's
@@ -92,3 +90,52 @@ mechanical — it needs an explicit RHF-integration decision (e.g. RHF `Controll
 3. **Tabs** reshapes the change callback (`onValueChange({value})` → `onChange(value)`) but
    passes a plain string, so — unlike Checkbox/Switch — it does **not** collide with RHF;
    it's a low-effort ③, not a ② bridge.
+
+---
+
+## ③ Reshapes — migration detail (Modal / Table / Tabs)
+
+**The test for a ③:** does an SMG target component already exist (wrapping the renamed
+Chakra v3 primitive) to migrate onto? For all three it does — `Dialog`, `Table`, `Tabs` — so
+we **follow the rename** onto the SMG component. (If there were *no* Chakra equivalent, it
+would be a custom component and we'd bake the wrapper into the API instead — but that's the
+④ case, not these three.)
+
+### Table — ✅ easy, pure search-replace. Go for it now.
+
+Rename the flat elements to the `Table` compound; one prop transform:
+
+- root `Table` → `Table.Root`
+- `Thead` → `Table.Header` · `Tbody` → `Table.Body` · `Tfoot` → `Table.Footer`
+- `Tr` → `Table.Row`
+- `Th` → `Table.ColumnHeader` · `Td` → `Table.Cell`
+- `isNumeric` (on `Th`/`Td`) → `textAlign="end"`
+
+All mechanical.
+
+### Tabs — ✅ easy, two small renames. Go for it now.
+
+- `<Tab isDisabled>` → `<Tab disabled>`
+- `<Tabs onChange={fn}>` → `<Tabs onValueChange={({ value }) => fn(value)}>`
+
+Only wrinkle: the handler signature changes `(value)` → `({ value })` — trivial, but not a
+blind string-swap.
+
+### Modal — ⚠️ careful codemod, not a blind find-replace.
+
+- `<Modal>` → `<Dialog>`
+- `isOpen={x}` → `open={x}`  *(pure rename)*
+- `onClose={fn}` → `onOpenChange={(e) => { if (!e.open) fn() }}`  *(semantic wrap, not a rename)*
+- `ModalCloseButton` → reconcile with SMG `Dialog`'s own close handling (`Dialog` renders its
+  own close when given a `title`), so it often **disappears** rather than mapping 1:1.
+
+### Recommendation
+
+Knock out **Table + Tabs** now via the ① flow (codemod call sites → repoint export → delete
+adapter). **Modal** takes the same flow but needs a **careful/human** codemod for the
+`onClose` wrap and the close-button reconciliation.
+
+After removal, all three resolve to the SMG `components` `Dialog` / `Table` / `Tabs`, which
+are then classified (**`components`**, generic design-system) and conformance-cleaned in the
+next phase — note they carry their own debt (e.g. `components/tab` does
+`Omit<ChakraTabsRootProps, 'variant'>`, a style-prop leak).
