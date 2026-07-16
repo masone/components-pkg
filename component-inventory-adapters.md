@@ -21,7 +21,7 @@ the exact codemod spec.
 | **Divider** | ① | `Divider`→`Separator` (props passed straight through as `SeparatorProps`) | **yes** | remove → v3-native | low |
 | **FormControl** | ① (component rename) | `FormControl`→`Field`; `isRequired`→`required`; `isDisabled`→`disabled`; `id`/`label`/`errorMessage`/`size`/`tooltip`/`hint`/`labelButtonText`/`labelButtonOnClick` pass through unchanged | **yes** | remove → v3-native | low |
 | **FormLabel** | ① (component rename) | `FormLabel`→`Field.Label` wrapped in `Field.Root`; children only, no props mapped | **yes** | remove → v3-native | low |
-| **Hide** | ④ | `above`→`hideFrom`; `below`→`hideBelow` (on raw Chakra `Box`) — reimplements a component v3 removed | **no** (per framework: v3 has no `Hide`; keep the semantic wrapper) | reclassify → shared component (no Chakra API expected) | low |
+| **Hide** | ④ (B1) | `above`→`hideFrom`; `below`→`hideBelow` (on raw Chakra `Box`) — v3 removed `Hide` but ships `hideFrom`/`hideBelow` as **native style props** | **removable** | **migrate to native `hideFrom`/`hideBelow`; delete** (not kept) | low |
 | **Input** | ① | `isDisabled`→`disabled`; `isReadOnly`→`readOnly`; `isInvalid`→`invalid`; `textColor`→`color`. **NOTE:** current code is a pure rename — it does **NOT** rebuild a synthetic event (no `onChange` handling), contrary to `adapter-removal.md`'s claim that "Checkbox and Input do the same." | **yes** | remove → v3-native | low |
 | **InsertionLayout** | ④ | custom-named re-export of `SingleColumnCenteredLayout`; only `maxContentWidth?: keyof sizes.container` — not a Chakra shim | **no** | reclassify → shared component (no Chakra API expected) | low |
 | **Link** | ④ | `noOfLines`→`lineClamp`; `isTruncated`→`truncate`; `textColor`→`color`; `onClick`/`href` null-coalesced to `undefined`; injects `leftIcon`/`rightIcon` around children; NextLink compat (`as` component + `prefetch` ⇒ `asChild` + `<AsComp href prefetch replace>`) | **no** (icon injection + NextLink asChild branch is real behavior) | reclassify → shared component (no Chakra API expected) | high |
@@ -32,8 +32,8 @@ the exact codemod spec.
 | **PopoverFilter** | ④ | `isDisabled`→`disabled` (default `false`) over the custom `filterPatterns/popover` component | **no** (domain filter component, not a Chakra primitive) | reclassify → shared component (no Chakra API expected) | low |
 | **RangeFilterInputWithSlider** | ④ | `isDisabled`→`disabled`; `onFocus` passthrough; generic over `<NFrom, NTo extends string>`; wraps custom `rangeFilterInputWithSlider` | **no** (domain filter component) | reclassify → shared component (no Chakra API expected) | low |
 | **Select** | ① | `isDisabled`→`disabled`; `isInvalid`→`invalid` | **yes** | remove → v3-native | low |
-| **SelectMenu** | ④ | reshapes `options:{value,label,onClick}[]`→`items:{value,text,onClick}[]`; `withIndicator`→`showOptionsCheckmark` (default `true`); `leftIcon`→`icon` — a bespoke API over `Menu`, not a Chakra shim | **no** | reclassify → shared component (no Chakra API expected) | medium |
-| **Show** | ④ | `above`→`hideBelow`; `below`→`hideFrom`; `showDisplay`→`display` (on raw Chakra `Box`) — reimplements a component v3 removed | **no** (per framework: v3 has no `Show`) | reclassify → shared component (no Chakra API expected) | low |
+| **SelectMenu** | ④ (really a ①-style dialect) | reshapes `options→items`, `withIndicator→showOptionsCheckmark` (default flip), `leftIcon→icon` — **pure rename over the SMG `Menu`** (two layers off Chakra), no new behavior | **n/a — redundant** | **merge into `Menu`; delete** (migrate `options→items` etc.) | low |
+| **Show** | ④ (B1) | `above`→`hideBelow`; `below`→`hideFrom`; `showDisplay`→`display` (on raw Chakra `Box`) — v3 removed `Show`; use native `hideFrom`/`hideBelow` | **removable** | **migrate to native props; delete** (not kept) | low |
 | **SimpleGrid** | ① | `spacing`→`gap`; `spacingX`→`gapX`; `spacingY`→`gapY`; `columns` passthrough | **yes** | remove → v3-native | low |
 | **Skeleton** | ① | `isLoaded`→`loading` **inverted**: `loading={!isLoaded}` | **yes** (mind the inversion in the codemod) | remove → v3-native | low |
 | **Stack** | ① | `spacing`→`gap` (over raw Chakra `Stack`) | **yes** | remove → v3-native | low |
@@ -70,16 +70,12 @@ working. Removing them forces every form + RHF register/Controller onto v3's
 mechanical — it needs an explicit RHF-integration decision (e.g. RHF `Controller` wrapping
 `onCheckedChange`) before the adapter can go. Effort: high.
 
-**Really components to reclassify, NOT remove (④) — keep the behavior:**
-- **Real behavior:** `Box` (polymorphism `as`/`asChild` + NextLink `href`/`prefetch`
-  injection), `Link` and `LinkOverlay` (icon injection + NextLink `asChild` compat),
-  `Popover` (device-based hover→`HoverCard` / touch→click fallback via `useMediaQuery`).
-- **v3-removed components reimplemented:** `Hide`, `Show` (`hideFrom`/`hideBelow` wrappers).
-- **Bespoke / domain components dumped in the adapter folder:** `InsertionLayout`
-  (`SingleColumnCenteredLayout`), `SelectMenu` (`options→items` reshape over `Menu`),
-  `PopoverFilter` and `RangeFilterInputWithSlider` (custom `filterPatterns` components).
-  These expose no Chakra API and should move into `components`/`features`; deleting them
-  loses functionality.
+**④ — not a flat "reclassify & keep" (see "④ disposition — refined" below):** it splits into
+Group A (custom behavior on a Chakra primitive — `Box`, `Link`, `LinkOverlay`, `Popover`),
+Group B1 (removable via native v3 props — `Hide`, `Show`), and Group B2 (collapse the
+redundant adapter into one component — `InsertionLayout`, `PopoverFilter`,
+`RangeFilterInputWithSlider`, and `SelectMenu`, which is really a redundant dialect over the
+SMG `Menu`).
 
 **Notable discrepancies vs `adapter-removal.md` (from reading the real code):**
 1. **Input is ①, not ②.** The current `Input/index.tsx` only renames
@@ -139,3 +135,42 @@ After removal, all three resolve to the SMG `components` `Dialog` / `Table` / `T
 are then classified (**`components`**, generic design-system) and conformance-cleaned in the
 next phase — note they carry their own debt (e.g. `components/tab` does
 `Omit<ChakraTabsRootProps, 'variant'>`, a style-prop leak).
+
+---
+
+## ④ disposition — refined (Group A / B1 / B2)
+
+Checking each ④ against "does a same-named Chakra v3 component exist, and does the adapter
+wrap one?" splits the flat "reclassify & keep" into three dispositions. **None of the ④ is a
+plain primitive.**
+
+### Group A — same-named Chakra component exists; the adapter adds real behavior on top
+`Box`, `Link`, `LinkOverlay`, `Popover`. The base is a Chakra primitive/component; the
+adapter's value is the behavior — polymorphism + NextLink (`Box`/`Link`/`LinkOverlay`),
+device hover↔touch → `HoverCard` (`Popover`). **Custom components on a primitive — not
+primitives.** Per-component decision: keep the behavior as a real `components` component, or
+shed it back to the primitive where it's now native (Chakra `asChild` covers most of Box's
+polymorphism; the NextLink glue is the genuinely-custom part).
+
+### Group B1 — no Chakra component, but replaceable by native v3 style props → REMOVE
+`Hide`, `Show`. Chakra v3 removed these and ships `hideFrom`/`hideBelow` as **style props**.
+So they are *not* "keep" — migrate consumers to the native props (`<Hide above="md">` →
+`hideFrom="md"`) and **delete** the wrappers.
+
+### Group B2 — no Chakra underneath → collapse the redundant adapter into ONE component
+`InsertionLayout`, `PopoverFilter`, `RangeFilterInputWithSlider`, `SelectMenu`. The
+"adapter" isn't bridging Chakra — it's aliasing/reshaping our own code, so it's pointless
+indirection.
+- **InsertionLayout / PopoverFilter / RangeFilterInputWithSlider** — an underlying custom
+  component already exists; fold the adapter's API into it (bake `disabled` etc. in) and
+  delete the adapter. One component remains, in `components`/`features`.
+- **SelectMenu — special: a redundant *dialect*, not a distinct component.** It wraps the SMG
+  `Menu` (two layers off Chakra) and only renames `options→items`,
+  `withIndicator→showOptionsCheckmark` (default flip), `leftIcon→icon` — no new behavior. It
+  collapses **into `Menu`**: migrate consumers to `Menu`, delete `SelectMenu`. **End state:
+  one `Menu` exposed, no `SelectMenu`, Chakra's raw Menu stays internal.** (Corrects its ④
+  "custom, keep" call — it's really a ①-style rename over our own component.)
+
+**Net for ④:** A = 4 keep-or-shed decisions; B1 = 2 removals (native props); B2 = 4 collapses
+into single components (one of which — `SelectMenu` — disappears into `Menu`). So of the 10
+④ items, only ~4 (Group A) are genuine keep-as-components; the rest either delete or collapse.
