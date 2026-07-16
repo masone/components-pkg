@@ -136,6 +136,28 @@ are then classified (**`components`**, generic design-system) and conformance-cl
 next phase — note they carry their own debt (e.g. `components/tab` does
 `Omit<ChakraTabsRootProps, 'variant'>`, a style-prop leak).
 
+### ③ concerns (codemod safety)
+
+- **Table — no real concern.** 1:1 structural map, no behavioral traps. Only note: it's an
+  **import + JSX-element rewrite** (7 flat names → the compound `Table.*`), so a bigger — but
+  still mechanical — change than an attribute swap.
+- **Tabs — one footgun.** The change callback is a **signature change**, not a rename:
+  `onChange(value)` ← `onValueChange({ value })`. A blind prop rename compiles but silently
+  breaks (the handler receives an object, not a string) — the handler body must become
+  `({ value }) => …`. Same class of trap as Skeleton's inversion.
+- **Modal — real concerns; hand-migrate, don't automate:**
+  1. `onClose → onOpenChange` is a **semantic wrap** (fires on open *and* close, passes an
+     event): `onOpenChange={(e) => { if (!e.open) onClose() }}`. A naive rename breaks close.
+  2. **`ModalCloseButton` is per-usage.** SMG `Dialog` renders its own close **only when given
+     a `title`**. So a *titled* modal + an explicit `ModalCloseButton` → **duplicate** close
+     buttons; a *titleless* modal that relied on `ModalCloseButton` → the close **disappears**.
+     Each call site needs a look.
+
+**Cross-cutting (low, not a blocker):** all three land consumers on the current SMG
+`Dialog`/`Table`/`Tabs`, whose remaining debt is **mostly internal** (e.g. the
+`Omit<ChakraTabsRootProps,'variant'>` style leak) rather than public-API — so these props
+won't need a second migration. Double-migration risk is low.
+
 ---
 
 ## ④ disposition — refined (Group A / B1 / B2)
