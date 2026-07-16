@@ -30,9 +30,14 @@ Mechanical prop/name mapping; removal = a codemod on call sites.
 ```tsx
 export const Divider: FC<SeparatorProps> = (props) => <Separator {...props} />;
 ```
-Also: `Stack` (`spacing→gap`), `Text` (`isTruncated→truncate`, `noOfLines→lineClamp`,
-`textColor→color`, `align→textAlign`), `Button` (`isDisabled→disabled`, `isLoading→loading`),
-`Skeleton`, `Chip`, `FormLabel`, `SimpleGrid`, `Select`.
+Also (13 total): `Divider`, `Stack` (`spacing→gap`), `Text` (`isTruncated→truncate`,
+`noOfLines→lineClamp`, `textColor→color`, `align→textAlign`), `Button`
+(`isDisabled→disabled`, `isLoading→loading`), `Input`
+(`isDisabled/isReadOnly/isInvalid/textColor` → v3), `Skeleton`, `Chip`, `FormControl`,
+`FormLabel`, `SimpleGrid`, `Select`, `List`, `Tab`.
+
+> **Codemod caveat — `Skeleton` negates:** it maps `loading={!isLoaded}`, so the codemod must
+> *invert* the flag, not just rename it. A naive rename silently flips skeleton states.
 
 ### ② Event-model bridges — high effort, the real crux
 Not renames — they **rebuild a fake synthetic `ChangeEvent`** from Chakra v3's detail
@@ -41,10 +46,12 @@ callbacks so old `onChange(event)` code (and **react-hook-form**) keeps working.
 const syntheticEvent = { target, currentTarget: target } as ChangeEvent<HTMLInputElement>;
 onChange(syntheticEvent);   // bridges v3 onCheckedChange({checked}) → v2 onChange(event)
 ```
-`Checkbox` and `Input` do the same. **This is the RHF / synthetic-event tension** flagged
-early: Chakra v3 moved off synthetic events, RHF still expects them. Removing these forces
-every form + RHF integration onto the v3 event model. *This is the hardest part of the whole
-refactor — a real decision, not a codemod.*
+`Checkbox` does the same. (Verified from source: `Input` does **not** — it only renames
+flags; and `Tabs` unwraps `{value}` to a plain string without a synthetic event. So the true
+event-bridges are **just `Checkbox` and `Switch`** — two adapters.) **This is the RHF /
+synthetic-event tension** flagged early: Chakra v3 moved off synthetic events, RHF still
+expects them. Removing these forces every form + RHF integration onto the v3 event model.
+*This is the hardest part of the whole refactor — a real decision, not a codemod.*
 
 ### ③ Component renames / API reshapes — medium
 `Modal` maps the v2 Modal API onto v3 `Dialog`:
@@ -52,7 +59,9 @@ refactor — a real decision, not a codemod.*
 <Dialog {...rest} open={isOpen} onOpenChange={(e) => { if (!e.open) onClose?.(); }} />
 ```
 `Table` maps the flat v2 API (`Thead/Tbody/Th/Td`, `isNumeric`) onto the v3 compound
-`Table.Header/Body/…`. Removal = migrating call sites to the v3 component shape.
+`Table.Header/Body/…`. `Tabs` maps `onChange(value)` from v3 `onValueChange({value})`
+(unwraps to a plain string, so — unlike `Checkbox`/`Switch` — it does **not** collide with
+RHF; low effort). Removal = migrating call sites to the v3 component shape.
 
 ### ④ Genuine behavior mislabeled as "adapter" — do NOT remove; reclassify & keep
 These aren't compat shims at all — they carry real behavior. `Popover`:
@@ -82,7 +91,7 @@ they were dumped in the wrong folder. Reclassify into `components`/`features` an
 | Kind | Effort | Migrate to v3, or reclassify? |
 |---|---|---|
 | ① renames | **Low** — mechanical codemod | Migrate → v3-native |
-| ② event bridges (Switch/Checkbox/Input) | **High** — RHF decision | Migrate *if* RHF integration resolved; else shared component |
+| ② event bridges (Switch/Checkbox) | **High** — RHF decision | Migrate *if* RHF integration resolved; else shared component |
 | ③ reshapes (Modal→Dialog, Table) | **Medium** — call-site migration | Migrate → v3-native |
 | ④ behavior (Popover, Box, Hide/Show, Link, filters…) | **Not a removal** | Reclassify as shared component; keep behavior |
 
@@ -102,8 +111,13 @@ shared component (custom API, no Chakra expectation).
 
 ---
 
-## Next step
+## Verified catalogue
 
-Fold "catalogue each adapter into ①②③④ + its prop map + migrate-or-reclassify call" into the
-component-inventory agent prompt, so the output is the precise per-adapter removal plan that
-this precondition needs. (Scope decision for that prompt still open.)
+The full per-adapter catalogue (all 27 folders / 28 exports, read from source) lives in
+`component-inventory-adapters.md`. Counts: **① 13 · ② 2 · ③ 3 · ④ 10.** Only **`Checkbox` and
+`Switch` (②)** need a *decision* (react-hook-form); everything else is a mechanical codemod
+(16) or a reclassify-and-keep (10, no deletion).
+
+Corrections that catalogue made to this doc (from reading actual code): `Input` is ① not ②
+(rename-only, no synthetic event); `Skeleton` negates its flag (`loading={!isLoaded}`); `Tabs`
+is ③ not ② (unwraps `{value}`, no RHF collision).
