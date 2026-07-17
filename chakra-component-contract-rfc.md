@@ -5,12 +5,47 @@
 **Proposed.** This RFC makes a foundational product decision. It does not yet prescribe the
 migration, codemods, lint rules, or the final API of every existing component.
 
-## In one sentence
+## Two valid ways to build a component library
 
-We will have two explicit shared UI contracts: a **design-system package that exposes configured
-Chakra v3**, and a **shared-components package that exposes our own semantic APIs**.
+There are two coherent models. Neither is inherently better; the mistake is blending them in a
+single API without telling consumers which model applies.
 
-## Why we are discussing this now
+### Model A: Chakra customization layer
+
+The library exposes Chakra itself, configured for our brands.
+
+- Consumers use Chakra documentation, props, compound composition, and event/detail models.
+- Tokens, recipes, slot recipes, and providers create the SMG visual language.
+- A recipe changes the look; it does not require a wrapper or create a second API.
+
+This model is efficient and honest when Chakra already supplies the required behaviour.
+
+### Model B: owned abstraction layer
+
+The library exposes a semantic API that it owns.
+
+- Consumers use our documentation and our semantic props.
+- Chakra is an internal implementation detail.
+- The library owns the composition, behaviour, accessibility decisions, and migration burden.
+
+This model is valuable when we provide a genuinely better reusable abstraction than Chakra,
+but it is expensive. We must design, document, and maintain every bespoke API we expose.
+
+### Where we are today: an implicit hybrid
+
+In reality, this package already contains both models. Some exports are Chakra or nearly
+Chakra; some are useful bespoke shared components. That is not itself a problem.
+
+The problem is that the two models are not separated or named. They sit behind one flat package
+surface, and individual exports often blend them:
+
+> A wrapper accepts Chakra props, but changes Chakra composition or behaviour.
+
+Consumers can then follow neither Chakra documentation nor a small owned API with confidence.
+This is an **implicit hybrid**: both valid models exist, but the import does not tell a consumer
+which one applies and partial abstractions fill the gap.
+
+## Why we need to decide this now
 
 Using a component should not require reading its implementation first. A developer should be
 able to see an import and know what documentation applies, what props are available, and who
@@ -49,42 +84,6 @@ We should not pretend the current leaky API buys us framework portability. Inste
 - remove the remaining v2-ish dialect and compatibility mindset from the long-term API;
 - treat a future framework replacement, if ever desired, as a separate strategic rewrite with
   its own business case.
-
-## Two valid ways to build a component library
-
-There are two coherent models. Neither is inherently better; the mistake is blending them in a
-single API without telling consumers which model applies.
-
-### Model A: Chakra customization layer
-
-The library exposes Chakra itself, configured for our brands.
-
-- Consumers use Chakra documentation, props, compound composition, and event/detail models.
-- Tokens, recipes, slot recipes, and providers create the SMG visual language.
-- A recipe changes the look; it does not require a wrapper or create a second API.
-
-This model is efficient and honest when Chakra already supplies the required behaviour.
-
-### Model B: owned abstraction layer
-
-The library exposes a semantic API that it owns.
-
-- Consumers use our documentation and our semantic props.
-- Chakra is an internal implementation detail.
-- The library owns the composition, behaviour, accessibility decisions, and migration burden.
-
-This model is valuable when we provide a genuinely better reusable abstraction than Chakra,
-but it is expensive. We must design, document, and maintain every bespoke API we expose.
-
-### The model we must stop using: partial abstraction
-
-The current problem is not that both models exist. It is that they are mixed within the same
-export:
-
-> A wrapper accepts Chakra props, but changes Chakra composition or behaviour.
-
-Consumers can then follow neither Chakra documentation nor a small owned API with confidence.
-This RFC prohibits that pattern going forward.
 
 ## Decision: an explicit split hybrid
 
