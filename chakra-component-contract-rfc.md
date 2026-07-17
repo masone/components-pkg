@@ -173,27 +173,99 @@ The split gives a direct answer to the problems seen in the inventory:
 
 ## Worked examples
 
-### Accordion: target design system
+The following are illustrations of the two contracts. They do not prescribe the migration
+sequence or final export names.
 
-Accordion currently exposes Chakra props but replaces Chakra’s compound composition with local
-wrappers. Its only bespoke convenience is `leftIcon` on a separately exported trigger. That is
-not enough value to justify a parallel Accordion API.
+### Accordion: when Chakra composition is the API
 
-Its target is direct Chakra Accordion plus the registered `accordion` slot recipe in the design
-system. The existing wrapper may require a later migration plan, but it does not define the
-future contract. See `accordion-migration.md`.
+Today a caller can write package-specific compound JSX while still passing Chakra root props:
 
-### Alert: target shared component
+```tsx
+<Accordion defaultValue={['details']} colorPalette="blue" variant="light">
+  <AccordionItem value="details">
+    <AccordionButton leftIcon={<InfoIcon />}>Details</AccordionButton>
+    <AccordionPanel>Content</AccordionPanel>
+  </AccordionItem>
+</Accordion>
+```
 
-Alert owns title, description, optional icon/link, dismissible state, and the full message
-layout. That is a meaningful abstraction. It should remain a shared component, but its current
-`Omit<ChakraAlertRootProps, …>` leak must disappear so consumers see one closed semantic API.
-See `alert-migration.md`.
+This is confusing because `defaultValue` and `colorPalette` suggest that Chakra documentation
+applies, but Chakra does not document `AccordionItem`, `AccordionButton`, or
+`AccordionPanel`. The wrapper also inserts the indicator and panel slots for the caller.
 
-### Badge: target design system
+Under the design-system contract, Chakra’s documented composition is the API:
 
-Badge only maps `text` to Chakra children. Its recipe already supplies branding and variants.
-It should become direct Chakra Badge; `text` to children is a small later codemod.
+```tsx
+<Accordion.Root defaultValue={['details']} colorPalette="blue" variant="light">
+  <Accordion.Item value="details">
+    <Accordion.ItemTrigger>
+      <HStack flex="1" gap="sm">
+        <InfoIcon />
+        <span>Details</span>
+      </HStack>
+      <Accordion.ItemIndicator />
+    </Accordion.ItemTrigger>
+    <Accordion.ItemContent>
+      <Accordion.ItemBody>Content</Accordion.ItemBody>
+    </Accordion.ItemContent>
+  </Accordion.Item>
+</Accordion.Root>
+```
+
+The registered recipe gives the visual result. Chakra owns the props, state, slots, and
+accessibility; the caller composes the icon and indicator explicitly.
+
+### Alert: when the library owns the message API
+
+Today Alert owns the entire message structure but still accepts Chakra configuration and style
+props through an omitted Chakra root type:
+
+```tsx
+<Alert
+  type="warning"
+  title="Your browser is outdated"
+  description="Update to continue."
+  dismissible
+  colorPalette="orange"
+  bg="orange.50"
+/>
+```
+
+The first four props describe an owned message component. The last two are Chakra styling
+escapes. Mixing them means neither contract is clear.
+
+Under the shared-components contract, the message API is all that callers see:
+
+```tsx
+<Alert
+  status="warning"
+  title="Your browser is outdated"
+  description="Update to continue."
+  dismissible
+/>
+```
+
+Alert owns its title, description, icon, action, close behaviour, recipe, and internal Chakra
+composition. A caller who needs external spacing, background, or placement uses the
+design-system layer around it.
+
+### Badge: when a recipe is enough
+
+Today the wrapper adds only a `text` prop on top of a Chakra component:
+
+```tsx
+<Badge text="New" variant="navigationLinkBadge" />
+```
+
+It has no custom behaviour or composition. The recipe already supplies the visual variants.
+
+Under the design-system contract, the caller uses Chakra children directly:
+
+```tsx
+<Badge variant="navigationLinkBadge">New</Badge>
+```
+
+There is no need for a second Badge API merely to turn children into `text`.
 
 ## Scope of this RFC
 
@@ -245,10 +317,3 @@ genuine shared abstractions where they add value.
 - Existing ambiguous exports are migration work, not precedent for future APIs.
 - Making the separation concrete and migrating existing exports will have cost, but it replaces
   recurring uncertainty with a durable, understandable contract.
-
-## Related artifacts
-
-- `component-inventory.md` — current API and pattern inventory.
-- `chakra-migration-triage.md` — consumer migration effort triage.
-- `accordion-migration.md` — current Accordion evidence and possible migration paths.
-- `alert-migration.md` — current Alert evidence and possible migration paths.
