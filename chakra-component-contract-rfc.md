@@ -33,23 +33,23 @@ but it is expensive. We must design, document, and maintain every bespoke API we
 
 ### Where we are today: an implicit hybrid
 
-In reality, this package already contains both models. Some exports are Chakra or nearly
+In reality, the current library already contains both models. Some exports are Chakra or nearly
 Chakra; some are useful bespoke shared components. That is not itself a problem.
 
-The problem is that the two models are not separated or named. They sit behind one flat package
+The problem is that the two models are not separated or named. They sit behind one flat public
 surface, and individual exports often blend them:
 
 > A wrapper accepts Chakra props, but changes Chakra composition or behaviour.
 
 Consumers can then follow neither Chakra documentation nor a small owned API with confidence.
-This is an **implicit hybrid**: both valid models exist, but the import does not tell a consumer
-which one applies and partial abstractions fill the gap.
+This is an **implicit hybrid**: both valid models exist, but the public surface does not tell a
+consumer which one applies and partial abstractions fill the gap.
 
 ## Why we need to decide this now
 
 Using a component should not require reading its implementation first. A developer should be
-able to see an import and know what documentation applies, what props are available, and who
-owns the component’s behaviour.
+able to encounter an export and know what documentation applies, what props are available, and
+who owns the component’s behaviour.
 
 That is not true today. A component can look like Chakra but accept only some Chakra props. It
 can expose Chakra props while rendering a different component tree. Or it can look like one of
@@ -85,33 +85,33 @@ We should not pretend the current leaky API buys us framework portability. Inste
 - treat a future framework replacement, if ever desired, as a separate strategic rewrite with
   its own business case.
 
-## Decision: an explicit split hybrid
+## Decision: a clearly separated hybrid
 
-We choose both valid models, but place them in **separate packages** with clear public
-contracts. This is an explicit split hybrid—not a flat package that asks consumers to infer
-intent from implementation details.
+We choose both valid models, but clearly separate their public contracts. This is an explicit
+split hybrid—not a flat surface that asks consumers to infer intent from implementation details.
+The concrete mechanism for making the separation visible is deliberately deferred.
 
-| Import from… | Consumer promise |
+| Contract | Consumer promise |
 |---|---|
-| **Design system** | “This is Chakra v3, configured for us. Chakra documentation and composition apply.” |
-| **Shared components** | “This is ours. Use its documented semantic API; Chakra is internal.” |
+| **Design-system contract** | “This is Chakra v3, configured for us. Chakra documentation and composition apply.” |
+| **Shared-components contract** | “This is ours. Use its documented semantic API; Chakra is internal.” |
 
-The package boundary carries the promise. A consumer chooses a contract at import time.
+The public boundary must carry the promise. A consumer must be able to choose a contract before
+reading implementation.
 
 Domain/product features are outside this RFC. Their ownership and placement should be decided
-separately, and must not blur either shared package contract.
+separately, and must not blur either shared contract.
 
-## Contract 1: the design system exposes Chakra v3
+## Contract 1: the design-system layer exposes Chakra v3
 
-The design-system package answers: “How do I use our configured Chakra v3 system?”
+The design-system layer answers: “How do I use our configured Chakra v3 system?”
 
 - Its public API is the exact Chakra **v3** API.
 - Its public compound composition, state model, and callback/detail shapes are Chakra v3’s.
-- It directly re-exports from `@chakra-ui/react`: no `Pick`, `Omit`, prop renames, default
+- It preserves Chakra without transformation: no `Pick`, `Omit`, prop renames, default
   behaviour, wrapper logic, or prop filtering.
 - Recipes and slot recipes are registered in the Chakra system and provide branding. A recipe
   does not need a wrapper and must not become a reason to invent a parallel API.
-- Chakra type generation makes registered recipe variants visible in TypeScript.
 - Raw Chakra style props and responsive values remain available. Transparency is the contract;
   token discipline must not be implemented as an arbitrary prop whitelist.
 - V2-style names and bridges do not belong in the long-term API: no `isDisabled`, `isLoading`,
@@ -121,9 +121,9 @@ The design-system package answers: “How do I use our configured Chakra v3 syst
 Examples include Box, Flex, Stack, Grid, SimpleGrid, Center, AspectRatio, and—where we choose
 the Chakra contract—Badge, Accordion, Skeleton, Table, and List.
 
-## Contract 2: shared components expose owned semantic APIs
+## Contract 2: the shared-components layer exposes owned semantic APIs
 
-The shared-components package answers: “What reusable interaction or UI pattern do we own
+The shared-components layer answers: “What reusable interaction or UI pattern do we own
 beyond Chakra?”
 
 - Public props come from native-element attributes, shared vocabulary, owned semantic props,
@@ -167,9 +167,9 @@ The split gives a direct answer to the problems seen in the inventory:
   shared components and must close its Chakra surface.
 - **Two styling mechanisms:** registered recipes are the normal design-system mechanism;
   manual slot styling belongs only to genuinely owned composition.
-- **V2 dialect persistence:** the design-system package is explicitly Chakra v3, not a v2
+- **V2 dialect persistence:** the design-system layer is explicitly Chakra v3, not a v2
   compatibility layer.
-- **Unclear ownership:** the import source says whether Chakra or the package owns the API.
+- **Unclear ownership:** the public contract says whether Chakra or the library owns the API.
 
 ## Worked examples
 
@@ -199,7 +199,7 @@ It should become direct Chakra Badge; `text` to children is a small later codemo
 
 ### Goals
 
-- Make package API expectations predictable at import time.
+- Make component API expectations predictable before source inspection.
 - Recommit the design-system layer to Chakra v3.
 - Preserve Chakra where Chakra is the intended developer experience.
 - Make shared components genuinely owned, semantic, and documentable.
@@ -211,7 +211,7 @@ It should become direct Chakra Badge; `text` to children is a small later codemo
 - Which existing exports move to design system versus shared components.
 - How current APIs are migrated, deprecated, codemodded, or removed.
 - Lint rules, CI checks, and other enforcement mechanics.
-- Feature/domain package ownership.
+- Feature/domain ownership.
 - Detailed controlled-state, adapter-removal, and react-hook-form decisions.
 
 ## Alternatives considered
@@ -226,25 +226,25 @@ This is also consistent, but it commits us to inventing, documenting, migrating,
 maintaining a bespoke API for every Chakra interaction and compound component. It is a valid
 strategic choice, but much larger than the current package implies.
 
-### Keep the current flat mixed package
+### Keep the current flat, implicit model
 
 This retains local convenience but preserves documentation mismatch, type leakage, and API
 surprises. It is rejected.
 
-### Explicit split hybrid — proposed
+### Clearly separated hybrid — proposed
 
-Two packages make the valid Chakra and owned-abstraction models visible at import time. This
-preserves Chakra where it is reasonable and supports genuine shared abstractions where they add
-value.
+Clearly separating the valid Chakra and owned-abstraction models makes the intended contract
+discoverable before source inspection. This preserves Chakra where it is reasonable and supports
+genuine shared abstractions where they add value.
 
 ## Consequences
 
-- A Chakra component name in the design-system package means Chakra v3 rules apply exactly.
+- A Chakra component in the design-system layer means Chakra v3 rules apply exactly.
 - A shared-component name promises a closed, owned API; consumers use the design system for
   layout and Chakra-level composition.
 - Existing ambiguous exports are migration work, not precedent for future APIs.
-- Package splitting and individual migrations have cost, but they replace recurring uncertainty
-  with a durable, understandable contract.
+- Making the separation concrete and migrating existing exports will have cost, but it replaces
+  recurring uncertainty with a durable, understandable contract.
 
 ## Related artifacts
 
