@@ -1,312 +1,245 @@
-# RFC: Re-establish the Chakra and component-library contract
+# RFC: Separate Chakra v3 from shared component abstractions
 
 ## Status
 
-**Proposed.** This is a foundational design decision. It intentionally precedes and constrains
-the per-component cleanup work in `component-inventory.md` and
-`chakra-migration-triage.md`.
+**Proposed.** This RFC makes the foundational product decision that precedes component-by-
+component migration planning. It intentionally does not define codemods, deprecations, lint
+rules, or a refactoring schedule.
 
 ## Summary
 
-The package currently has no predictable public-component contract. Some exports are Chakra
-aliases, some are recipe-branded wrappers, some are semantic components, and some are legacy
-compatibility shims. The difficult cases mix those roles: they expose broad Chakra prop types
-but replace Chakra's documented compound composition.
+The current package is an implicit hybrid. Some exports are direct or nearly-direct Chakra
+components, some are useful bespoke shared components, and some are partial wrappers that
+forward Chakra props while replacing Chakra composition. The result is unpredictable for both
+developers and agents: a consumer cannot know whether Chakra documentation applies, whether a
+prop is available, or which layer owns a component's behaviour.
 
-This RFC proposes an explicit hybrid library with hard boundaries:
+This RFC establishes an **explicit split hybrid** with two package-level contracts:
 
-1. **Chakra primitives** preserve Chakra API and composition exactly; recipes provide
-   branding.
-2. **Owned generic components** expose closed semantic APIs; Chakra is internal.
-3. **Domain features** expose domain/data APIs; Chakra is internal.
-4. **Compatibility facades** are temporary migration state, with a declared target and no
-   permission to grow.
+1. A **design-system package** that is the configured Chakra **v3** customization layer.
+   Chakra API, composition, state model, and naming are public and authoritative.
+2. A **shared-components package** that contains owned, bespoke, generic abstractions. Its
+   API is semantic and closed; Chakra is an implementation detail.
+
+This is not a fourth alternative to an explicit hybrid. It is the enforceable form of it. The
+import source carries the contract rather than requiring a developer to inspect implementation
+or guess from a component name.
 
 The central rule is:
 
-> A wrapper either preserves Chakra’s API and composition exactly, or it owns a closed
+> A wrapper either preserves Chakra v3 API and composition exactly, or it owns a closed
 > semantic API. It must not selectively forward Chakra props while replacing Chakra
 > composition.
 
-This is not a proposal to refactor every component now. It is a proposal to re-establish the
-rules that make incremental migration safe and make new code predictable.
-
 ## Problem
 
-A developer cannot currently infer an export's contract from its name, package, or TypeScript
-surface:
+A developer cannot presently infer an export's API contract:
 
-- A component can accept most Chakra props but not all of them because of `Pick` or `Omit`.
-- A component can expose Chakra root/slot props while constructing a different compound tree.
-- A recipe can be registered but also manually applied by a wrapper.
-- A custom prop can be hidden on one separately exported compound part rather than visible on
-  the root API.
-- Legacy Chakra-v2 compatibility adapters share the public barrel with v3-oriented exports.
+- Chakra types are often `Pick`ed or `Omit`ted, so some Chakra props work and others do not.
+- Components can expose broad Chakra root/slot props while creating a different compound tree.
+- Recipes can be registered and also manually re-applied by wrappers.
+- A small wrapper convenience can be hidden on one compound slot while the root looks Chakra-
+  shaped.
+- Chakra-v2 compatibility dialects and event bridges sit beside v3-oriented components.
 
-This makes both human and agent work unreliable. Chakra documentation is sometimes relevant,
-but consumers cannot know whether it describes the import they are using. Package-owned
-documentation is also insufficient because many components retain an uncontrolled Chakra
-surface.
-
-The result is neither a consistent Chakra customization layer nor a consistent abstraction
-layer.
+This is neither a reliable Chakra customization layer nor a reliable abstraction layer. It
+creates documentation mismatch, API surprises, and a steady supply of workaround props.
 
 ## Context and evidence
 
-The current investigation produced three representative examples.
+### Accordion: Chakra API with changed composition
 
-### Accordion — almost no abstraction value
+Accordion exposes Chakra root and slot props such as `colorPalette`, `asChild`,
+`defaultValue`, `lazyMount`, and controlled value props. But it replaces Chakra's compound
+composition with `AccordionItem`, `AccordionButton`, and `AccordionPanel`; it injects an
+indicator, wraps trigger contents, creates content/body slots, and clones children to propagate
+the recipe variant. Its only bespoke prop is `leftIcon` on the separately exported trigger.
 
-Accordion exposes Chakra root and slot prop types, including root configuration such as
-`colorPalette`, `asChild`, `defaultValue`, `lazyMount`, and controlled value props. However,
-it replaces Chakra's compound JSX composition with `AccordionItem`, `AccordionButton`, and
-`AccordionPanel`; it injects an indicator, wraps trigger contents, creates content/body slots,
-and manually clones children to propagate recipe `variant`.
+This is not a useful long-term abstraction. Its target belongs in the design-system package as
+direct Chakra Accordion plus the registered slot recipe. The consumer migration question is
+real, but deliberately out of scope here. See `accordion-migration.md`.
 
-The only bespoke prop is `leftIcon` on the separately exported `AccordionButton`, not the root.
-This does not justify a parallel Accordion API. Its desired target is a Chakra primitive with a
-registered slot recipe, but immediate conversion would be a consumer JSX migration. The
-current implementation should therefore be treated as a temporary compatibility facade, not a
-valid long-term category. See `accordion-migration.md`.
+### Alert: a useful abstraction with a Chakra leak
 
-### Alert — real semantic abstraction, leaky boundary
+Alert owns a meaningful message API: title, required description, optional icon/link, and
+dismissible local state. It builds a complete message layout. That is a valid shared-component
+responsibility.
 
-Alert owns a meaningful message API: `title`, required `description`, optional icon/link,
-and dismissible local state. It constructs the full root/indicator/content/title/description
-tree and close action. That is a plausible owned generic component.
+It nevertheless extends an omitted Chakra Alert root type, exposing broad Chakra props and
+style configuration despite owning the composition. Its target belongs in shared components as
+a closed semantic Alert. See `alert-migration.md`.
 
-It also intersects its API with an `Omit<ChakraAlertRootProps, ...>`, thereby exposing broad
-Chakra configuration and style props despite owning the composition. Its desired target is a
-closed generic component, not necessarily a primitive. See `alert-migration.md`.
+### Badge: recipe branding without wrapper value
 
-### Badge — recipe branding without wrapper value
+Badge only maps a `text` prop to Chakra children. The `badge` recipe is already registered and
+defines its visual variants. It adds no behaviour or composition value, so it belongs in the
+design-system package as direct Chakra Badge. Its `text` migration is a straightforward
+codemod.
 
-Badge is a Chakra wrapper that only changes `children` into `text`. Its registered recipe
-already defines the visual variants. The wrapper adds no behaviour or composition value and
-should become a direct Chakra primitive; `text` to children is a simple codemod.
-
-These cases demonstrate why a single category based only on current implementation is not
-enough. The RFC needs a target contract and an explicit temporary state for migration.
+These examples establish the need for two hard public contracts, not a new case-by-case wrapper
+style.
 
 ## Decision
 
-Adopt an explicit hybrid component-library model:
+Adopt two distinct packages with the following consumer promises:
 
-| Contract | Consumer expectation | Chakra relationship |
+| Package | Consumer promise | Chakra relationship |
 |---|---|---|
-| Primitive | “This is Chakra. Chakra docs, props, and compound composition apply.” | Direct transparent export; recipe brands it. |
-| Generic component | “This is ours. Use its semantic API and our docs.” | Internal implementation detail. |
-| Feature | “This solves a domain/product problem.” | Internal implementation detail. |
-| Compatibility facade | “This is legacy. It has a declared migration target.” | Temporary bridge only. |
+| **Design system** | “This is Chakra v3. Chakra docs, props, callback/detail shapes, and compound composition apply.” | Chakra is the public API; this package configures and re-exports it. |
+| **Shared components** | “This is ours. Use its semantic API and its documentation.” | Chakra is an internal implementation detail. |
 
-The long-term package structure may reflect these contracts through separate packages or
-subpaths. That packaging decision is not required to adopt the rules now, but the public API
-must eventually make the distinction discoverable.
+Domain/product features are out of scope for this RFC. Their ownership and placement must not
+blur either shared package contract.
 
-## Contracts
+## Contract 1: Design system is the Chakra v3 customization layer
 
-### 1. Chakra primitive / customization layer
+The design-system package answers: “How do I use our configured Chakra v3 system?”
 
-Primitives answer: “How do I compose layout or use a Chakra building block?”
+- Its public API is the exact Chakra **v3** API.
+- Its public compound composition, state model, and callback/detail shapes are the exact Chakra
+  v3 contracts.
+- Exports are direct re-exports from `@chakra-ui/react`; there are no `Pick`s, `Omit`s,
+  renamed props, default behaviour, wrapper logic, or prop filtering.
+- Tokens, providers, recipes, and slot recipes configure the Chakra system and provide the SMG
+  visual language. A recipe does not need a wrapper and must not become a reason to invent a
+  parallel API.
+- Chakra type generation is part of adopting the v3 customization model, so registered recipe
+  variants are visible in TypeScript.
+- Raw Chakra style props and responsive values remain allowed. Transparency is the contract;
+  token discipline must not be implemented as an arbitrary prop whitelist.
+- Chakra-v2 dialects and bridges do not belong in the long-term public API: no `isDisabled`,
+  `isLoading`, `spacing`, renamed component APIs, or synthetic v2 event models merely to make
+  v3 look like v2.
 
-- Public API is the exact Chakra API.
-- Public compound composition is the exact Chakra composition.
-- The implementation is a direct re-export from `@chakra-ui/react`; no `Pick`, `Omit`, prop
-  rename, default behaviour, wrapper logic, or style filtering.
-- Recipes and slot recipes are registered in the configured Chakra system and provide
-  branding. A recipe does not need a wrapper.
-- Chakra type generation is run so registered recipe variants are type-safe.
-- Raw Chakra style props and responsive values are allowed because transparency is the
-  contract. Token discipline is handled by convention/lint, not a partial type whitelist.
+Examples include Box, Flex, Stack, Grid, SimpleGrid, Center, AspectRatio, and—where the team
+selects the Chakra contract—Badge, Accordion, Skeleton, Table, and List.
 
-Examples: Box, Flex, Stack, Grid, SimpleGrid, Center, AspectRatio, and—where the team elects
-the Chakra contract—Badge, Accordion, Skeleton, Table, and List.
+## Contract 2: Shared components are owned abstractions
 
-### 2. Owned generic component / abstraction layer
+The shared-components package answers: “What reusable interaction or UI pattern do we own
+beyond Chakra?”
 
-Generic components answer: “What reusable interaction or UI pattern does the package own?”
-
-- Public props come only from native-element attributes, shared vocabulary, semantic props,
-  and intentional recipe variants.
-- No Chakra prop types or Chakra style props are exposed: no extension/intersection with a
-  Chakra props type, no `Pick`/`Omit` workaround, and no raw `bg`, `p`, `css`, `className`, or
-  `style` escape hatch.
-- Native accessibility attributes, ids, names, valid event handlers, and refs remain
-  available.
-- Look is owned by a registered recipe or slot recipe; behaviour/composition is owned by a
-  thin wrapper.
-- `as` is only semantic correction, never a behavioural replacement.
-- External layout is composed with a primitive; unavoidable self-sizing gets an explicit
-  semantic prop such as `fullWidth` only when justified.
+- Public props come only from native-element attributes, shared vocabulary, owned semantic
+  props, and intentional recipe variants.
+- Chakra prop types are never a source of public props: no extension/intersection, `Pick`, or
+  `Omit` of Chakra prop types.
+- Raw Chakra style props are not exposed. No `bg`, `p`, `m`, `css`, `className`, `style`,
+  `colorPalette`, or `asChild` escape hatch belongs on the public API.
+- Valid native accessibility attributes, ids, names, and event handlers remain available.
+- The component owns its composition, behaviour, and documentation. Consumers do not need to
+  understand Chakra slots to use it.
+- Visual language is owned by a recipe/slot recipe where needed; behaviour belongs in a thin
+  wrapper. External layout is composed with the design-system package.
+- `as` is semantic correction only, never a behavioural replacement.
 
 Examples likely include Button, Input, Alert, Dialog, Pagination, and domain-neutral form
-controls—subject to individual target decisions.
-
-### 3. Feature
-
-Features answer: “What product/domain problem does this solve?”
-
-- Public API contains domain data and domain semantics only.
-- Chakra and generic components are implementation details.
-- Features normally compose existing visual language rather than owning a new recipe.
-- App-specific features are candidates to move closer to their owning application/domain.
-
-Examples: VehicleReference, tenantSelection, filter patterns, navigation, and error-page
-composition.
-
-### 4. Compatibility facade
-
-Compatibility facades are not a permanent library category. They are an explicit temporary
-state for an export whose present API cannot be converted without consumer migration.
-
-Every facade must declare:
-
-- its target contract (primitive, generic component, or feature);
-- its migration path and whether a codemod is possible;
-- the breaking-change boundary for removal;
-- a freeze: no new bespoke props and no new consumers where lint/documentation can prevent it.
-
-Accordion is the canonical example: a legacy facade targeting a primitive. It may remain
-temporarily, but it must not be mistaken for the desired primitive API.
+controls, subject to individual target decisions.
 
 ## Recipe policy
 
-1. Recipes brand Chakra primitives through the configured Chakra system.
-2. Registered recipe keys are the normal mechanism. Manually applying a recipe inside a wrapper
-   is appropriate only when the wrapper genuinely owns custom composition; it must not be used
-   to turn a Chakra primitive into a partial abstraction.
-3. Recipe variants are the only intentional visual API. They are not a route for external
-   layout or context-specific positional styling.
-4. A recipe belongs to a generic component only when that component owns a stable generic
-   visual language. Features normally reuse component/primitive recipes.
-5. A recipe variant such as a navigation badge's positional offset should be challenged: external
-   placement belongs to the parent or a specifically named component, not a generic primitive.
+1. Recipes brand design-system exports through the configured Chakra system.
+2. The registered recipe key is the normal Chakra-v3 mechanism. A manually applied recipe is
+   appropriate only where a shared component genuinely owns custom composition.
+3. Recipe variants are intentional visual API; they are not a route for external layout or
+   context-specific positional styling.
+4. A recipe belongs to a shared component only when that component owns a stable generic visual
+   language.
+5. A generic component name must not conceal a context-specific layout variant—for example, a
+   navigation badge's positional offset belongs to its parent or to a specifically named
+   navigation component.
 
-## Public API and vocabulary policy
+## Public vocabulary policy
 
-For owned generic components and features:
+For shared components, use one canonical name per shared concept:
 
-- No Chakra prop type can be extended, intersected, picked, or omitted as a source of public
-  props.
-- Native element attributes are allowed, excluding styling escape hatches where the component
-  rules prohibit them.
-- Shared names are used consistently: `disabled`, `loading`/`loadingText`, `size`, `variant`,
-  `fullWidth`, `leftIcon`/`rightIcon`, `value`/`onChange`, `open`/`onOpenChange`, and `onClick`.
-- Legacy/v2 names such as `isDisabled`, `isLoading`, `isTruncated`, `noOfLines`, `spacing`,
-  `textColor`, and `align` are not introduced into new owned APIs.
+- `disabled`
+- `loading` and `loadingText`
+- `size` and `variant`
+- `fullWidth`
+- `leftIcon` and `rightIcon`
+- controlled `value` and `onChange`
+- overlay `open` and `onOpenChange`
+- `onClick`
 
-For primitives, Chakra's vocabulary remains authoritative; the package does not create a
-second dialect.
+Do not introduce v2 dialects into new shared APIs: `isDisabled`, `isLoading`, `isTruncated`,
+`noOfLines`, `spacing`, `textColor`, and `align` are examples of names that do not cross the
+new package boundary.
 
-## Enforcement direction
-
-The RFC establishes the policy; concrete tooling should follow in a later implementation plan.
-
-- Per-folder/package lint rules enforce the intended contract.
-- Primitive barrels may only re-export from `@chakra-ui/react`.
-- Owned components/features reject Chakra prop-type imports and raw style prop exposure.
-- Direct imports of branded Chakra components are governed by the package boundary/lint so
-  recipe configuration is not accidentally bypassed.
-- Recipe registration and type generation are checked in CI.
-- Compatibility facades carry deprecation metadata and are excluded from new use.
-- A manifest maps export → target contract → current migration state → one-line contract.
-
-## Migration strategy
-
-This RFC does **not** require an 80-component rewrite.
-
-1. Separate **current implementation state** from **target contract** in the inventory.
-2. Ship direct-re-export source cleanups first. They are generally additive: Flex, Stack,
-   SimpleGrid, Center, Grid aliases, Skeleton, Separator, and similar thin layers.
-3. For easy custom-prop migrations, provide deprecation guidance and codemods. Badge `text` to
-   children is the model.
-4. For compatibility facades, add a correct primitive/generic API alongside the legacy export
-   when necessary; migrate consumers gradually and remove in a coordinated major.
-5. For real generic components, preserve valuable behaviour while closing the Chakra prop
-   boundary. Do not convert them to raw Chakra merely because they import Chakra internally.
-6. Freeze new partial abstractions immediately. Every new wrapper must select one contract.
-
-`chakra-migration-triage.md` records the current consumer-migration effort assessment; it is a
-backlog input, not the decision itself.
+For design-system exports, Chakra v3 vocabulary is authoritative. The package does not create
+a second dialect.
 
 ## Goals
 
-- Make a component's expected API predictable before source inspection.
-- Preserve Chakra where Chakra is the intended contract.
-- Make package-owned components genuinely semantic and documented.
-- Stop API drift caused by partial wrappers and prop whitelists.
-- Enable incremental migration with known semver/codemod costs.
-- Give humans and agents a reliable decision procedure for new components.
+- Make package API expectations predictable at import time.
+- Recommit the design-system layer to Chakra v3 rather than preserve a v2-ish dialect.
+- Preserve Chakra wherever Chakra is the intended developer experience.
+- Make shared components genuinely owned, semantic, and documentable.
+- Stop partial abstractions, prop whitelists, and composition/API mismatches from becoming new
+  patterns.
+- Give humans and agents a reliable decision procedure for new exports.
 
 ## Non-goals
 
-- Refactor every current export in this RFC.
-- Decide every individual component's final API in this RFC.
-- Complete the package/subpath split immediately.
-- Enforce token-only/raw-value restrictions for primitives.
-- Delete adapters or compatibility facades before their migration plans are ready.
-- Solve all controlled-state or react-hook-form decisions here.
+- Refactor every current export.
+- Decide every individual component's target package/API.
+- Specify compatibility, codemod, deprecation, or removal policy.
+- Specify lint rules, CI checks, or package-migration mechanics.
+- Decide feature/domain package ownership.
+- Solve adapter removal, controlled state, or react-hook-form migration.
 
 ## Alternatives considered
 
-### A. Pure Chakra customization package
+### Pure Chakra customization package
 
 Expose Chakra broadly and use recipes for all branding.
 
-- **Benefit:** maximum Chakra consistency and minimal wrapper code.
-- **Cost:** existing semantic components/features need a different home or must be rewritten;
-  this throws away useful owned behaviours such as Alert's message API.
+- **Benefit:** maximal Chakra consistency and minimal wrapper code.
+- **Cost:** useful owned abstractions need another home or are discarded.
 
-### B. Full abstraction layer
+### Full abstraction layer
 
-Expose only owned, closed APIs; Chakra is always hidden.
+Expose only bespoke APIs and hide Chakra everywhere.
 
 - **Benefit:** one public API philosophy.
-- **Cost:** major rewrite and continued maintenance of a parallel design-system API;
-  reimplementing Chakra composition has high cost and obscures Chakra's existing capability.
+- **Cost:** the team must invent, document, migrate, and maintain a parallel API for every
+  Chakra interaction and compound component. This is a legitimate choice, but a large one.
 
-### C. Accidental mixed wrapper model (current state)
+### Accidental mixed wrapper model (current state)
 
 Continue allowing partial Chakra forwarding and custom composition case by case.
 
-- **Benefit:** short-term local convenience.
-- **Cost:** unpredictable APIs, documentation mismatch, type leakage, and continued migration
-  debt. Rejected.
+- **Benefit:** local convenience.
+- **Cost:** unpredictable APIs, documentation mismatch, type leakage, and continuing debt.
+  Rejected.
 
-### D. Explicit hybrid model (proposed)
+### Explicit split hybrid model (proposed)
 
-Keep both primitives and owned components, but make their contracts hard and visible.
+Use two packages with hard, visible contracts: Chakra-v3 design system and owned shared
+components.
 
-- **Benefit:** preserves Chakra strengths and useful package abstractions without ambiguity.
-- **Cost:** requires discipline, enforcement, and migration planning.
+- **Benefit:** consumers choose their contract at import time; Chakra remains available where
+  reasonable, and genuine abstractions remain possible.
+- **Cost:** requires a package split and later migration work.
 
-## Consequences and trade-offs
+## Consequences
 
-- More explicit layout composition is expected around owned components; use primitives for
-  margins, positioning, and responsive layout.
-- Some existing exports will be marked legacy rather than corrected immediately. This is an
-  honest transitional cost, not a failure to decide.
-- New primitive APIs may initially need additive names/subpaths while legacy names remain,
-  until a major version can make the clean name canonical.
-- The inventory becomes a migration backlog, not an architecture specification by itself.
-- The package boundary/package split remains an open delivery decision, but the type and
-  composition contracts can be enforced immediately.
+- A Chakra component name in the design-system package means Chakra v3 rules apply exactly.
+- A shared-component name promises a closed, owned API; consumers use primitives for layout.
+- Existing ambiguous exports are migration work, not precedent for future APIs.
+- The inventory and migration notes are evidence and backlog input; they do not define the two
+  fundamental contracts.
 
-## Open decisions to resolve after accepting this RFC
+## Deliberately deferred decisions
 
-1. Does the target structure use three packages (`primitives`, `components`, `features`) or a
-   two-package boundary with internal feature ownership rules?
-2. Which exports become direct Chakra primitives versus retained generic components?
-3. What is the standard compatibility-facade lifecycle, deprecation annotation, and removal
-   threshold?
-4. Which generic components require controlled state conventions beyond the shared vocabulary?
-5. How are recipe type generation and recipe registration verified in CI?
-6. Which style/token restrictions are linted for primitives versus owned components?
-7. What are the sequencing and react-hook-form decisions for the adapter-removal program?
+1. Which existing exports move to design system versus shared components?
+2. How current APIs are migrated, deprecated, codemodded, or removed.
+3. How the two contracts are mechanically enforced.
+4. Where features/domain components live.
+5. Detailed controlled-state and form-integration conventions.
 
-## Follow-up artifacts
+## Related artifacts
 
 - `component-inventory.md` — current API and pattern inventory.
 - `chakra-migration-triage.md` — consumer migration effort triage.
-- `accordion-migration.md` — compatibility-facade-to-primitive example.
-- `alert-migration.md` — partial-abstraction-to-generic-component example.
+- `accordion-migration.md` — current Accordion evidence and possible migration paths.
+- `alert-migration.md` — current Alert evidence and possible migration paths.
