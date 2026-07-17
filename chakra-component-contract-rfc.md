@@ -33,6 +33,17 @@ The central rule is:
 
 ## Why this RFC now
 
+The codebase is being made more agent-friendly and is expected to provide **feedforward**:
+enough explicit structure and contract information for a developer or agent to choose the right
+component and use it correctly *before* inspecting implementation details or receiving a
+failure. That is not possible with the present surface. There is no concise, reliable way to
+describe what API a component exposes: “it is Chakra” is often false, while “it is our semantic
+component” is often equally false.
+
+This is therefore not just a cleanup or documentation concern. A predictable public contract is
+a prerequisite for useful component discovery, automated implementation, generated guidance,
+and durable agent instructions.
+
 ### Current pain points
 
 The package is difficult to use safely without opening implementation source. A developer—or an
