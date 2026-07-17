@@ -31,6 +31,53 @@ The central rule is:
 > semantic API. It must not selectively forward Chakra props while replacing Chakra
 > composition.
 
+## Why this RFC now
+
+### Current pain points
+
+The package is difficult to use safely without opening implementation source. A developer—or an
+agent—cannot reliably answer basic questions from an import alone:
+
+- Is this Chakra v3, or a package-owned component with a different API?
+- Do Chakra documentation and examples apply to this import?
+- Which Chakra props are accepted, ignored, renamed, or deliberately withheld?
+- Does a recipe brand the Chakra component automatically, or must a wrapper reproduce slots
+  and apply styles itself?
+- Is a surprising prop/behaviour intentional design-system policy, v2 compatibility, or an
+  accidental implementation detail?
+
+This uncertainty makes ordinary work slower and riskier. Consumers either read source, try
+props until TypeScript accepts them, or add workarounds. Maintainers and agents cannot use a
+simple rule to decide whether to re-export, compose, or wrap a Chakra component.
+
+### Observable symptoms
+
+The ambiguity is visible in the current API surface:
+
+- **Partial Chakra prop surfaces:** `Pick`/`Omit` wrappers expose an arbitrary subset of
+  Chakra, so a component looks Chakra-shaped but is not safely documented by Chakra.
+- **Changed composition with Chakra props:** wrappers can accept Chakra root/slot props while
+  rendering a different compound tree. Accordion is the clearest example.
+- **Two styling mechanisms at once:** recipes may be correctly registered in the Chakra system
+  while wrappers also manually obtain and apply those recipes.
+- **V2 dialect persistence:** adapters and v2-ish names/event models make Chakra v3 adoption
+  incomplete and teach consumers a second API.
+- **Undiscoverable abstractions:** a small bespoke convenience can be attached to one compound
+  subcomponent, while the root continues to look like a Chakra export.
+- **Unclear ownership:** generic abstractions, Chakra customization, and domain/product
+  composition share one public surface.
+
+### The challenge
+
+Classification alone cannot solve these symptoms. Each current export has consumer usage and
+some have real behaviour, so forcing one uniform API immediately would cause avoidable breaking
+changes. Conversely, accepting the current implementation patterns preserves the ambiguity for
+every future export.
+
+The team needs to settle the contracts first: what the design system promises, what shared
+components promise, and when Chakra is intentionally visible. That decision lets later RFCs
+plan migration component by component without reopening the architecture each time.
+
 ## Decision 0: Recommit to Chakra v3
 
 Chakra v3 is the adopted UI platform for the design system and for projects that consume this
