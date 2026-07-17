@@ -31,6 +31,29 @@ The central rule is:
 > semantic API. It must not selectively forward Chakra props while replacing Chakra
 > composition.
 
+## Decision 0: Recommit to Chakra v3
+
+Chakra v3 is the adopted UI platform for the design system and for projects that consume this
+library. This RFC does not treat the package as a framework-neutral portability layer.
+
+Replacing Chakra with another UI framework would be a full application and component rewrite,
+not a dependency substitution. Projects are already heavily Chakra-aware: they use Chakra
+layout/style props, responsive values, compound component composition, state/detail callback
+models, and Chakra-specific types. The current package also exposes those concepts through
+many leaky public interfaces.
+
+Such a framework migration would only be materially insulated if this package already exposed
+a complete, stable, bespoke abstraction API. It does not. Pretending otherwise would hide the
+real cost and encourage further partial abstractions.
+
+Therefore:
+
+- We recommit to Chakra v3 and its documented patterns as the foundation for this work.
+- We remove the remaining v2-ish compatibility dialect rather than preserve it as a parallel
+  public API.
+- Framework replacement, if ever desired, is a separate strategic rewrite decision with its
+  own business case; it is not an outcome this RFC is intended to enable.
+
 ## Problem
 
 A developer cannot presently infer an export's API contract:
