@@ -1,14 +1,26 @@
 # RFC: Separate Chakra v3 from shared component abstractions
 
-## Status
+This RFC makes a few foundational statements that will help us improving the DX of our component library. These are necessary to understand and agree upon before we plan further steps. No technical solutions at this point, just alignment.
 
-**Proposed.** This RFC makes a foundational product decision. It does not yet prescribe the
-migration, codemods, lint rules, or the final API of every existing component.
+## Problem statement
 
-## Two valid ways to build a component library
+> Today’s component library has no predictable public contract.
 
-There are two coherent models. Neither is inherently better; the mistake is blending them in a
-single API without telling consumers which model applies.
+Consumers cannot tell whether an export is raw Chakra with our branding, a bespoke shared component, or even a legacy compatibility wrapper. Chakra props may be fully supported, partially blocked, renamed, or mixed with custom behaviour; Chakra composition may be preserved or silently replaced behind an abstraction.
+
+As a result, developers cannot safely rely on documentation or type shapes alone. They inspect source, trial props, add local workarounds, or create more wrappers. This increases implementation and review overhead, preserves v2 patterns, and makes Chakra v3 adoption inconsistent.
+
+It is equally difficult for agents: there is no reliable feedforward about which API or composition model applies. Basic component use requires implementation-level investigation, making generated changes slower, less consistent, and more error-prone.
+
+Using a component should not require reading its implementation first. A developer should be
+able to encounter an export and know what documentation applies, what props are available, and
+who owns the component’s behaviour.
+
+## Two valid models to build a component library with Chakra
+
+A lot of teams are using raw Chakra. When customization is required, there are two coherent models. Neither is inherently better; the mistake is blending them in a single API without telling consumers which model applies.
+
+[TODO: two extremes]
 
 ### Model A: Chakra customization layer
 
@@ -20,7 +32,7 @@ The library exposes Chakra itself, configured for our brands.
 
 This model is efficient and honest when Chakra already supplies the required behaviour.
 
-### Model B: owned abstraction layer
+### Model B: Owned abstraction layer
 
 The library exposes a semantic API that it owns.
 
@@ -31,48 +43,37 @@ The library exposes a semantic API that it owns.
 This model is valuable when we provide a genuinely better reusable abstraction than Chakra,
 but it is expensive. We must design, document, and maintain every bespoke API we expose.
 
-### Where we are today: an implicit hybrid
+### Where we are today: Unfortunately, an implicit hybrid
 
-In reality, the current library already contains both models. Some exports are Chakra or nearly
-Chakra; some are useful bespoke shared components. That is not itself a problem.
+In reality, our current library mixes both models. Some exports are Chakra or nearly
+Chakra; some are bespoke shared components. That is not itself a problem.
 
 The problem is that the two models are not separated or named. They sit behind one flat public
-surface, and individual exports often blend them:
+surface, and individual exports often blend them. 
 
-> A wrapper accepts Chakra props, but changes Chakra composition or behaviour.
+A component can look like Chakra but accept only some Chakra props. It
+can expose Chakra props while rendering a different component tree. Or it can look like one of
+our components but silently depend on Chakra-specific behaviour. The result is slow, uncertain
+work: people read source, try props until TypeScript accepts them, or add workarounds.
 
 Consumers can then follow neither Chakra documentation nor a small owned API with confidence.
 This is an **implicit hybrid**: both valid models exist, but the public surface does not tell a
 consumer which one applies and partial abstractions fill the gap.
 
-## Why we need to decide this now
+## Design decisions
 
-Using a component should not require reading its implementation first. A developer should be
-able to encounter an export and know what documentation applies, what props are available, and
-who owns the component’s behaviour.
+Our component library started out with a loose intent, then grew organically as delivery moved quickly. Along the way, we weakened some of the original implicit boundaries without making new decisions explicit. Today, it is difficult to tell what is intentional, what is legacy, and what “correct” looks like. We need to re-establish this foundation. 
 
-That is not true today. A component can look like Chakra but accept only some Chakra props. It
-can expose Chakra props while rendering a different component tree. Or it can look like one of
-our components but silently depend on Chakra-specific behaviour. The result is slow, uncertain
-work: people read source, try props until TypeScript accepts them, or add workarounds.
+The design decisions below are the principles I want us to challenge, discuss, and recommit to as a team. They are intended to restore clarity and guide future component work consistently. This is the moment to debate them. Once we commit and begin migrating toward them, these principles should become stable constraints, not questions we reopen component by component.
 
-This matters even more because we are making the codebase agent-friendly and want it to provide
-**feedforward**. A developer or agent needs enough information to choose and use a component
-correctly *before* inspecting source or receiving a failure. At present, there is no concise,
-reliable way to describe many component interfaces: “it is Chakra” is often false, while “it
-is our semantic component” is often equally false.
+## Decision 1: Framework choice
 
-The aim of this RFC is to restore that predictability before we decide how to migrate each
-individual component.
-
-## First decision: Chakra v3 remains our UI platform
-
-We recommit to Chakra v3 and its documented patterns.
+> We recommit to Chakra v3 and its documented patterns.
 
 Our projects are already heavily Chakra-aware. They use Chakra layout and style props,
 responsive values, compound component composition, state/detail callback models, and
 Chakra-specific types. The current package also exposes many of those concepts through its
-public APIs.
+public APIs. Our pain points do not come from Chakra. They come from how our library has wrapped, reshaped, and inconsistently exposed Chakra over time.
 
 Moving to another UI framework would therefore be a full application and component rewrite,
 not a dependency substitution. That kind of migration could only be insulated if this package
@@ -80,14 +81,16 @@ already provided a complete, stable, framework-neutral abstraction API. It does 
 
 We should not pretend the current leaky API buys us framework portability. Instead, we will:
 
-- embrace Chakra v3 where Chakra is the intended developer experience;
-- remove the remaining v2-ish dialect and compatibility mindset from the long-term API;
-- treat a future framework replacement, if ever desired, as a separate strategic rewrite with
-  its own business case.
+- Embrace Chakra as our UI platform, including its concepts, APIs, composition patterns, and theming model.
+- Build on Chakra v3 and remove the remaining v2-style dialect and compatibility mindset from the long-term API.
+- Revisit Chakra only when foundational blockers leave no reasonable alternative. A strategic framework replacement will not be discussed based on DX or personal preferences.
+- Make agents effective at using our component library, reducing the practical influence of individual framework preferences on day-to-day implementation choices.
 
-## Decision: a clearly separated hybrid
+## Decision 2: Component library model
 
-We choose both valid models, but clearly separate their public contracts. This is an explicit
+> We embrace an explicit hybrid approach
+
+We choose a mix of both valid models, but clearly separate their public contracts. This is an explicit
 split hybrid—not a flat surface that asks consumers to infer intent from implementation details.
 The concrete mechanism for making the separation visible is deliberately deferred.
 
@@ -102,7 +105,9 @@ reading implementation.
 Domain/product features are outside this RFC. Their ownership and placement should be decided
 separately, and must not blur either shared contract.
 
-## Contract 1: the design-system layer exposes Chakra v3
+### Contract 1: the design-system layer exposes Chakra v3
+
+[TODO: primitives not design system]
 
 The design-system layer answers: “How do I use our configured Chakra v3 system?”
 
@@ -121,7 +126,7 @@ The design-system layer answers: “How do I use our configured Chakra v3 system
 Examples include Box, Flex, Stack, Grid, SimpleGrid, Center, AspectRatio, and—where we choose
 the Chakra contract—Badge, Accordion, Skeleton, Table, and List.
 
-## Contract 2: the shared-components layer exposes owned semantic APIs
+### Contract 2: the shared-components layer exposes owned semantic APIs
 
 The shared-components layer answers: “What reusable interaction or UI pattern do we own
 beyond Chakra?”
@@ -132,11 +137,15 @@ beyond Chakra?”
   intersection, `Pick`, or `Omit`.
 - Raw Chakra style props are not public API. No `bg`, `p`, `m`, `css`, `className`, `style`,
   `colorPalette`, or `asChild` escape hatch.
+- Custom components are not concerned with external layout. External layout uses the design system.  
 - Valid native accessibility attributes, ids, names, and event handlers remain available.
 - The component owns its composition and behaviour. Consumers do not need to understand Chakra
   slots to use it.
 - A recipe/slot recipe owns the visual language where needed; the wrapper owns only the
-  component’s actual behaviour and composition. External layout uses the design system.
+  component’s actual behaviour and composition. 
+  
+  [TODO]
+  
 - `as` is semantic correction only, never a behavioural replacement.
 
 Shared vocabulary is consistent: `disabled`, `loading`/`loadingText`, `size`, `variant`,
@@ -145,7 +154,7 @@ Shared vocabulary is consistent: `disabled`, `loading`/`loadingText`, `size`, `v
 Examples likely include Button, Input, Alert, Dialog, Pagination, and domain-neutral form
 controls, subject to later per-component decisions.
 
-## What this means for recipes
+### What this means for recipes
 
 Recipes are visual configuration, not a third component contract.
 
@@ -157,7 +166,7 @@ Recipes are visual configuration, not a third component contract.
 - A manually applied recipe is justified only when a shared component genuinely owns custom
   composition. It is not a way to create a partial Chakra wrapper.
 
-## The current symptoms this decision addresses
+### The current symptoms this decision addresses
 
 The split gives a direct answer to the problems seen in the inventory:
 
