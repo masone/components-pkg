@@ -146,3 +146,29 @@ configuration rather than a business entity. **VehicleReference, tenantSelection
 and filter inputs are features** because they encode vehicle/user/navigation/filter-domain
 models.
 
+## D. Seller-web consumer usage evidence
+
+A generated inventory from seller-web provides the consumer-side evidence for prioritising
+this API work. It uses the public `@smg-automotive/components` entry point at
+`25.30.0-chakra-v3.1`, resolves aliased JSX imports, and has one row for each public JSX
+component export. Icons and non-JSX exports are deliberately excluded.
+
+| Measure | Result |
+|---|---:|
+| Public JSX component exports | 130 |
+| JSX usages in seller-web | 4,353 |
+| Zero-use public components | 26 |
+| Explicit components-pkg props | 3,437 |
+| Chakra-surface props | 10,549 |
+| Unresolved dynamic spread usages | 155 |
+
+The most frequently rendered exports are Box (922), Text (666), Stack (377), Flex (328),
+GridItem (232), Link (207), Button (143), and FormControl (133). This is a lookup-table
+input, not a refactoring verdict: no thresholds or recommendations are inferred from these
+counts.
+
+The inventory labels a prop **custom** only where its declaration originates in
+components-pkg; every other accepted prop is **Chakra surface**, including native/React
+attributes. It expands only spread values that can be traced to an object literal or an
+initialised local object. Dynamic spreads remain counted as unresolved rather than having
+their potential type members incorrectly reported as actual usage.
