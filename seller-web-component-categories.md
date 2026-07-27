@@ -1,4 +1,4 @@
-# Seller-web component categories
+# Component categories
 
 This classifies every public JSX export in the seller-web inventory exactly once.
 It is an organisational view of the current public API, not a recommendation or a
