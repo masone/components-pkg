@@ -7,8 +7,8 @@ statement about the component's implementation quality.
 | Category | Components |
 |---|---:|
 | Layout primitives | 11 |
-| UI primitives | 94 |
-| Shared product components | 25 |
+| UI primitives | 96 |
+| Shared product components | 23 |
 | Total | 130 |
 
 ## Layout primitives
@@ -21,6 +21,9 @@ Generic structural and responsive-layout building blocks.
 ## UI primitives
 
 Generic, reusable UI building blocks, including bespoke components-pkg wrappers.
+`RangeFilterInput` and `RangeFilterInputWithSlider` belong here because their
+contracts model reusable numeric range-input interaction, rather than a
+seller-web product or domain workflow.
 
 - `Accordion`, `AccordionButton`, `AccordionItem`, `AccordionPanel`, `Alert`,
   `AutoScout24AppLogo`, `Avatar`, `Badge`, `BreadcrumbLink`, `Breadcrumbs`,
@@ -32,7 +35,8 @@ Generic, reusable UI building blocks, including bespoke components-pkg wrappers.
   `H6`, `HighlightedText`, `HoverCard`, `Input`, `Link`, `LinkBox`, `LinkOverlay`,
   `List`, `ListItem`, `MarkedText`, `Menu`, `MissingImage`, `MobileOnlyAccordion`,
   `Modal`, `ModalCloseButton`, `MotoScout24AppLogo`, `OrderedList`, `Pagination`,
-  `Popover`, `Progress`, `Radio`, `RadioList`, `RangeSlider`, `Rating`,
+  `Popover`, `Progress`, `Radio`, `RadioList`, `RangeFilterInput`,
+  `RangeFilterInputWithSlider`, `RangeSlider`, `Rating`,
   `SearchableList`, `SearchField`, `Section`, `Select`, `SelectMenu`, `Skeleton`,
   `Spinner`, `Switch`, `Tab`, `Table`, `TabList`, `TabPanel`, `TabPanels`, `Tabs`,
   `Tbody`, `Td`, `Text`, `Textarea`, `Tfoot`, `Th`, `Thead`, `TimePicker`, `Tooltip`,
@@ -46,8 +50,8 @@ Product/domain composition, app-shell conventions, or shared product infrastruct
   `ArticleTeaser`, `DevOverlay`, `ErrorPage`, `FilterHeading`, `FocusedHeader`,
   `Footer`, `GalleryHeader`, `HeaderNavigation`, `InsertionLayout`,
   `LayoutWithVehicleReference`, `OpenFilterButton`, `PageLayout`, `PopoverFilter`,
-  `RangeFilterInput`, `RangeFilterInputWithSlider`, `SingleColumnCenteredLayout`,
-  `TenantSelection`, `ThemeProvider`, `TopVehicleSharedBadge`, `TwoColumnsLayout`,
+  `SingleColumnCenteredLayout`, `TenantSelection`, `ThemeProvider`,
+  `TopVehicleSharedBadge`, `TwoColumnsLayout`,
   `VehicleReference`
 
 ## Source links
