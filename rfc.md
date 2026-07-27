@@ -6,9 +6,11 @@ This RFC makes a few foundational statements that will help us improving the DX 
 
 > Today, the component library has no predictable public contract, blending custom and Chakra props in unpredictable ways, which makes Chakra-based components difficult to use consistently.
 
-components-pkg was intended to be an abstraction over Chakra, providing the product-facing component interface. Over time, that boundary gradually blurred and we strayed from the initial intent of providing an abstraction. 
+components-pkg was intended to be an abstraction over Chakra, providing the product-facing component interface. Over time, that boundary gradually blurred and we strayed from the initial intent of providing a deliberate abstraction. Especially with the Chakra migration, there was a pull towards the exposed components becoming more Chakra-centric. 
 
 Embracing the way Chakra works, our interfaces expose Chakra-internal props. The problem is that this happens without deliberate concern. Some components pick, some omit, some pass through. There is no clear pattern that can be applied. The result is an inconsistent interface. They're neither pure Chakra, nor purely custom, they're all implicit hybrids.
+
+We're also failing at communicating what the available set of props is. In Storybook, we intentionally filter out all Chakra props. A consumer can't look at Storybook and understand what the available interface looks like. People have to fill the gap by looking at infering the full picture from Chakra docs and types.
 
 ## Options & Analysis
 
@@ -16,6 +18,8 @@ If we want to harmonize the mixed interfaces that are confusing, we have two opt
 
 1. we can inch closer to raw Chakra, exposing the full set of props directly and reducing custom props. This means moving away from the component library being an abstraction, towards it being a Chakra configuration layer
 2. or we can take control of the interfaces, deliberately selecting necessary Chakra props case by case and consider them as part of our custom interface design
+
+The latter is in line with our original intent and with the state of our codebase too.
 
 ### Analysis
 
@@ -34,168 +38,114 @@ This shows that we're much closer to Option 2 (see above):
 - When we expose underlying Chakra props, it often does not look like an intentional choice, but a side effect.
 - Components-pkg is clearly closer to an opinionated abstraction, than to a raw passthrough of selected Chakra components
 
-## Components library Philosophy
+## Proposal 
 
-- components-pkg is an opinionated set of components with bespoke props interfaces, built with Chakra
+Proposed components library philosophy in a nutshell:
+
+- Components-pkg is an opinionated set of components with bespoke props interfaces, built with Chakra
 - Chakra supplies raw components, accessible behaviour, composition mechanisms, recipes, style props, tokens, and implementation patterns. we do not intend to mirror Chakra. The component library decides which of those capabilities it promises to application developers and in which way.
-- the primary purpose of this layer is to enforce the design system. eg. not every Chakra component is available, buttons should not accept arbitrary text colors, etc.
-- the props we expose as interfaces are within our control. we can deliberately choose to expose props from Chakra (pick, don't omit) when they are warranted. don't expose full Chakra prop sets because we can.
-- the abstraction has clear limits. Chakra is an implementation detail that we can't fully abstract away. our components libary is heavily depending on Chakra and its concepts inadvertedly leak to the consumer. you don't get around understanding Chakra concepts, eg. you have to know what tokens are, you have to know how Chakra handles responsiveness, etc.
-- Consumers of components-pkg use the Chakra docs only to understand the concepts. they should not be using the Chakra docs for deriving capabilities. Only the storybook, docs and interfaces of the library itself is authoritative.
+- We decide what the best surface is component by component. We don't have to mirror the underlying Chakra component behavior and props exactly. For example, just because Chakra offers great composability on a component, doesn't mean we can't expose the composability as a closed component. 
+- The primary purpose of this abstraction layer is to enforce the design system. eg. not every Chakra component is available, buttons should not accept arbitrary text colors, etc.
+- The primary purpose of the abstraction is not to hide Chakra from consumers entirely. We have to bea realistic that Chakra is an implementation detail we can't fully abstract away. Our components libary is heavily depending on Chakra and its concepts inadvertedly leak to the consumer. You don't get around understanding Chakra concepts, for example you have to know what tokens are, you have to know how Chakra handles responsiveness, etc.
+- The interfaces are within our ownership and subject to careful deliberation. 
+- We choose to expose Chakra props deliberately when they are warranted (pick, not omit). A prop that is forwarded from Chakra is considered as part of the public stable interface, just like custom props are. We commit to treating all props as an equal abstraction. Just because we leverage a Chakra prop, does not mean we're leaking Chakra internals.
+- Interfaces are consistent. You roughly know what to expect for each component type. Props are strongly typed and well documented in Storybook.
+- Consumers of components-pkg use the Chakra docs only to understand the concepts. They should not be using the Chakra docs for deriving capabilities. Only the storybook, docs and interfaces of the library itself is authoritative.
 - Chakra documentation is primarily implementation material for component-library maintainers. This remains true when a library component deliberately uses Chakra naming or patterns.
 
+### Framework choice
 
-### Types of components & their interfaces
-
-leaning into Chakra props
-
-layout primitives provide broad props
-Their role is composition and layout, so they may expose a broad Chakra-like layout and styling surface. Even then, the exported library API remains the contract; a close mapping to Chakra is an intentional choice, not an obligation.
-
-design system primitives
-These expose a curated API. They're often used in layouts and therefore  may deliberately retain selected Chakra behaviour — such as disabled state, loading state, events, accessibility, controlled values, or composition—but should not automatically expose all Chakra styling props.
-
-Their visual identity belongs to recipes and named variants. Their supported behaviour and limited layout needs belong to their public API.
-
-Their API should be semantic and content-driven, with styling owned by their recipe. Broad generic styling props are usually a sign that a variant, slot, or lower-level primitive should be exposed instead.
-
-
-
-## Framework choice
-
-> We continue committing to Chakra v3
+We continue committing to Chakra v3
 
 The position of this RFC is that problem is not with Chakra, but in inconsistency around components-pkg interfaces. While the idea of replacing Chakra pops up here and there, we never invested the time demonstrating an alternative path with tradeoffs, consequences and a migration plan clearly laid out - and that is telling in itself. The default position is that the existing framework remains the right choice. The burden of proof is on proposals that seek to replace it, not on repeatedly re-justifying the original decision. 
 
-If you feel strongly against this decision, talk to your Tech Lead and work out a proposal. Otherwise, with the acceptance of this RFC, we commit to only challenging Chakra when foundational blockers leave no alternative, not based on imperfect DX or personal preference. 
+### Props vocabulary
 
-We will:
+The exposed interfaces should have consistent naming. We want to prevent some components exposing `disabled` while others expose `isDisabled` or even `bg` versus `background`. This is part of building a predictable interface.
 
-- Embrace Chakra as our UI platform, including its concepts, APIs, composition patterns, and theming model.
-- Get back in control on the level of components-pkg abstracting Chakra to an extent where we do not care about the underlying framework when working on composing UIs. 
-- The goal is that Chakra knowledge is only needed when working on components-pkg, not on UIs
-- Make agents effective at using our component library, reducing the practical influence of individual framework preferences on day-to-day implementation choices.
+By exposing Chakra props on our interfaces, we inherently adopted a v2-inspired starting point. Since the components-pkg is an abstraction by definition, there is no need to adopt v3 naming conventions. The adapters give us exactly the type of abstraction the component-pkg is set up to provide. Since we never considered the passed-through Chakra props as part of _our API_, changing Chakra internals leak to the consumer and create inconsistencies.
 
-
-## Components library Philosophy
-
-### Making sense of confusion
-
-[TODO: wrappers are OK, even intended]
+Proposal: We make a decision for adopting Chakra v3 style props (and removing the adapters) vs. keeping v2 abstractions. We decide based on actual usage what the path of least resistance is. 
 
 
-## Rules
+### Expose all available props in Storybook
 
-curated restrictive, not permissive and open by default
+In Storybook, we currently [intentionally filter out all Chakra props](.storybook/main.ts) and `as`, `asChild` and `recipe` are hidden globally. Consumers of components-pkg must be able to fully rely on Storybook as the authoritative source of truth.
 
-### Vocabulary
+Proposed change: Expose all available props in Storybook to offer a complete documentation. Noise will be reduced by deliberately exposing only the necessary props, see below.
 
-First and foremost, shared vocabulary is consistent. We failed when props read like `isDisabled`, `disabled` and `notEnabled`. By default, we lean into the naming conventions that Chakra offers. 
+### Types of components & their interfaces
 
+We should acknowledge that we have components of varying types. They each have different needs for the props they expose. Chakra is exporting layout primitives and ui components on a flat export and we're putting our larger composite components on the same level. This is making it hard to tell them apart. 
 
-: `disabled`, `loading`/`loadingText`, `size`, `variant`,
-`fullWidth`, `leftIcon`/`rightIcon`, `value`/`onChange`, `open`/`onOpenChange`, and `onClick`.
-
-
-
-With the recent migration to v3, 
-
-1. Most Chakra layout primitives, but also some UI primitives were exposed almost one-to-one—especially. Those transparent exports are useful, but they created a misleading package-level mix of bespoke abstracted interfaces and raw low level Chakra props exposed. We would sometimes restrict, sometimes transparently pass through with no apparent reasoning or pattern. That can lead to a perception that components-pkg is intended as a thin pass-through rather layer, rather than as the owner of its public contracts. 
-
-2. the Chakra v2-to-v3 migration introduced compatibility wrappers. These wrappers intentionally translated v2 names and behaviours to v3 internals. Because they were flagged as temporary and undesirable, the corrective instinct became “return to Chakra compatibility”. Ironically, the wrappers are actually the abstraction we seek. Application developers should not be concerned about Chakra when working in the product UI, but rely only on components-pkg documentation, Storybook examples, and exported types as the source of truth—not infer supported behaviour from Chakra documentation.
-
-
-### Component set
-
-We curate the set of components. For each component we expose, we make a decision to use an underlying Chakra compoent or compose primitives. 
-
-### Component categories
-
-We categorize components. Each category is clearly defined, so we can define clear rules of engagement and set expectations on the shape of the interfaces they expose.
-[describe purpose]
-
-layout primitives - design system primitives - shared product components
-<------------------------------------------------------------------------->
-(raw, bare metal, full styling capabilities) - (building blocks, limited styling capabilities) - (no styling capabilities)
+At least internally, we should organize components by type in separate folders. By categorizing components, we can establish and enforce more consistent interfaces.
 
 #### Layout primitives
 
 Examples: `Box`, `Stack`, `Grid`, `Flex`.
 
-These are the fundamental, lowest level of building blocks we have. They're close to bare metal css, thus also closest to raw Chakra capabilities. These are meant to be gerneic, raw, unopinionated and flexible. For most leverage, these adopt a generous API surface.
-[Describe this category of components]
+These are the fundamental, lowest level of building blocks we have. This is how we apply low-level styling to low-level html elements. Their role is composition and layout, so they may expose a broad Chakra-like layout and styling surface. Projects should be able to pretty much achieve any customization needed with these. 
+
+These will likely be implemented as transparent Chakra exports. It's still important that we commit to owning the exposed interface for these. Just because we heavily lean into Chakra, doesn't mean we are not responsible for deliberately designing the interface. A close mapping to Chakra is an intentional choice, not an obligation. 
+
+Proposed change: People currently often find the set of props we pick on these restricting. We should decide to widen it.
 
 #### Design system primitives
 
 Examples: `Button`, `Input`, `Accordion`, `Dialog`, `Tabs`.
 
-One level higher than layout primitives, these are actual visible components that are assembling blocks for our UIs. These are concrete components we use regularly to assemble UI components. 
+One level higher than layout primitives, these are actual visible components we use regularly to compose UIs. They're strongly tied to the design system and match what the designers are building with too. 
 
-only select styling capabilities. heavy use of recipes (ie. variants, sizes). deliberately restricted set of styling props ([TODO: decision] eg. props for outer layout)
+These expose a bespoke API. We can use Chakra components under the hood, or we can implement our own. They're small and flexible. Likely implemented with Chakra recipes, exposing variants for styling and custom behavioral props. We design the interface in a way the design system can't be violated. These components are often used directly in layouts and might expose a defined set of style props. If we're exposing Chakra props, it doesn't mean we are not responsible for deliberately designing the interface.
 
-[Describe this category of components]
-
+Proposed change: Decide if these components should allow to control their outer layout. Define a set of Chakra styling props that should be exposed for all of these to increase consistency.
 
 #### Shared product components
 
 Examples: `ArticleTeaser`, `VehicleCard`, `SearchResultItem`, `PriceSummary`.
 
-These represent reusable product patterns. They are product-specific shared components. They're far away from being primitives. While they're reused, they're not primitives. 
+These represent reusable product patterns. They are product-specific shared components. They're farthest away from being primitives. While they're reusable shared components, they're used selectively in specific contexts and are not foundational building blocks. They're not exposing Chakra styling props and all interfaces are bespoke. The sole reason they made it to the component library is probably to make them shareable, not because they're considered part of the core design system. 
 
-[Describe this category of components]
+Proposed change: Now that we're in the monorepo, we can consider splitting these out of the component library and just put them in a "shared components" folder.
 
-### usecases
+### Ownership
 
-- you create a new component
-- you are lacking a style prop
-- 
+Enablement team volounteered to driving this RFC, owning the defintions and putting enforcements and guardrails for human and agent in place.
 
-
-
-## Changes
-
-- layout primitives expose all props by default, previously limited
-- pick deliberately, don't omit
+The components-pkg continues to be owned by the whole Frontend team. It falls on us collectively to keep this library sane. This includes designing good interfaces, writing healthy components and maintaining them, navigating Chakra updates and managing breaking changes. Please make sure to invest in good interface design for new components and keep boy/girl-scouting as part of your regular product work. Larger refactors like the one we're up against naturally fall into Tech20 time bucket.
 
 
+## Summary
 
-naming props
+We set out for components-pkg to be an abstraction layer, but over time we exposed more and more Chakra internals on the public interface without careful deliberation. The majority of our library is exposing custom bespoke interfaces. The components are adding valuable abstractions of top of raw Chakra components. The tension exists only because we treat any Chakra props we expose as accidental passthroughs.
 
-per category
+The library can deliberately borrow Chakra vocabulary, types, behaviours, recipes, and low-level building blocks. It can also intentionally provide transparent, Chakra-shaped primitives where that is useful. That doesn't mean we're in a conflict with mirroring Chakra 1-1 to the consumer. Every exported component remains a components-pkg contract: its supported props, composition, and documentation are defined by the library, not inferred from Chakra.
 
-## ownership
+### Path forward
 
-Enablement is owning the defintion and guardrails
-everyone can edit components. if you're violating rules bring it up with Enablement
-component library is open to everyone
-put yourself in component lib mode, chakra mode, maintainer mode, api designer mode
-you add components and change props, fix breaking changes
+The primary goal is for us to agree on the direction this RFC sets. Only once we all understand the state of our current and philosophy of our future components library, we can move forward. 
 
-### path to liberty
+I suggest to keep breaking changes and refactorings low and go the path of least resistance. Once our interfaces are transparent and consistent, it will be much easier to make deliberate breaking changes. 
 
-no breaking changes
-custom tokens
+- we expose all available props for each component in Storybook
+- we classify components into
+  - layout primitives (broad Chakra props exposed)
+  - design system primitives (bespoke interfaces, selective Chakra props)
+  - shared product components (bespoke interfaces, no Chakra props)
+- we define a set of Chakra props every design system primitive offers consistently (if any by default)
+- we define a vocabulary for naming props (v2 vs v3 syntax)
+- these practices get documented for agents and humans alike
+- only later, we decide on `as` usage, restricting custom tokens, removing compatibility adapters, etc.
 
+### Decisions
 
-### Q&A
+- components-pkg is an abstraction layer
+- components are implemented With Chakra v3
+- every Chakra prop we expose is considered part of the abstraction, even when they're a wrapper/passthrough (this is the important midset shift)
+- the interfaces are designed deliberately, Chakra props are exposed selectively and with purpose, not by default
+- nobody should have to look at Chakra docs when using components-pkg
+- we optimize for consistency over perfection for the short term. we build on our current state, go the path of least resistance and prevent unnecessary breaking changes
 
-no 1-1 parity
+## Please debate this proposal
 
-Is this an abstraction?
-Yes but a leaky one. Intentionally.
-
-chakra in comp pkg, comp pkg in projects
-
-
-Wrappers are OK!
-
-
-The intended direction is different:
-components-pkg owns the API used by product teams. Chakra is the toolkit it is built on.
-
-The library can deliberately borrow Chakra vocabulary, types, behaviours, recipes, and low-level building blocks. It can also intentionally provide transparent, Chakra-shaped primitives where that is useful. But every exported component remains a components-pkg contract: its supported props, composition, and documentation are defined by the library, not inferred from Chakra.
-
-
-As a result, consumers cannot reliably tell whether a component is a transparent Chakra primitive or a curated product API. They inspect source code, trial props, add local workarounds, or build further wrappers. This increases overhead.
-
-It is equally difficult for agents: there is no reliable feedforward about which API or composition model applies. Basic component use requires implementation-level investigation, making generated changes slower, less consistent, and more error-prone.
+Feel free to reach out to me for a synchronous discussion. 
