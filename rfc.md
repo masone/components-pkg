@@ -125,6 +125,7 @@ The primary goal is for us to agree on the direction this RFC sets. Only once we
 
 I suggest to keep breaking changes and refactorings low and go the path of least resistance. Once our interfaces are transparent and consistent, it will be much easier to make deliberate breaking changes. 
 
+- we freeze the interfaces for each components to exactly the set of props that are currently used (Pick). this gives us a limited stable set we can optimize down the line
 - we reflect all available props for each component in Storybook
 - we classify components into
   - layout primitives (broad Chakra props exposed)
