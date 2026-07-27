@@ -132,6 +132,7 @@ I suggest to keep breaking changes and refactorings low and go the path of least
   - layout primitives (broad Chakra props exposed)
   - design system primitives (bespoke interfaces, selective Chakra props)
   - shared product components (bespoke interfaces, no Chakra props)
+- we define what Chakra props every layout primitive offers consistently (eg. all)
 - we define a set of Chakra props every design system primitive offers consistently (if any by default)
 - we define a vocabulary for naming props (v2 vs v3 syntax), which also defines what to do with the adapters: keep or remove
 - these practices get documented for agents and humans alike
