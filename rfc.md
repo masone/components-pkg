@@ -131,7 +131,7 @@ I suggest to keep breaking changes and refactorings low and go the path of least
   - design system primitives (bespoke interfaces, selective Chakra props)
   - shared product components (bespoke interfaces, no Chakra props)
 - we define a set of Chakra props every design system primitive offers consistently (if any by default)
-- we define a vocabulary for naming props (v2 vs v3 syntax)
+- we define a vocabulary for naming props (v2 vs v3 syntax), which also defines what to do with the adapters: keep or remove
 - these practices get documented for agents and humans alike
 - only later, we decide on `as` usage, restricting custom tokens, removing compatibility adapters, etc.
 
