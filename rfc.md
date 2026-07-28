@@ -53,7 +53,7 @@ Proposed components library philosophy in a nutshell:
 
 ### Framework choice
 
-We continue committing to Chakra v3
+We continue committing to Chakra-ui
 
 The position of this RFC is that problem is not with Chakra, but in inconsistency around components-pkg interfaces. While the idea of replacing Chakra pops up here and there, we never invested the time demonstrating an alternative path with tradeoffs, consequences and a migration plan clearly laid out - and that is telling in itself. The default position is that the existing framework remains the right choice. The burden of proof is on proposals that seek to replace it, not on repeatedly re-justifying the original decision. 
 
