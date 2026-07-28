@@ -19,7 +19,7 @@ If we want to harmonize the confusing hybrid interfaces, we have two options:
 1. We can inch closer to raw Chakra, exposing the full set of props directly and reducing custom props. This means moving away from the component library being an abstraction, towards it being a Chakra configuration layer. The most extreme version of this is to import components directly from Chakra, not through the components-pkg.
 2. Or we can take control of the interfaces, deliberately selecting necessary Chakra props case by case and consider them as part of our custom interface design.
 
-The latter is in line with our original intent and with the state of our codebase too. The interface of components-pkg
+The latter is in line with our original intent and with the state of our codebase too.
 
 ### Analysis
 
