@@ -43,11 +43,11 @@ Proposed components library philosophy in a nutshell:
 
 - Components-pkg is an opinionated set of components with bespoke props interfaces, built with Chakra
 - The primary purpose of this abstraction layer is to enforce the design system. eg. not every Chakra component is available, buttons should not accept arbitrary text colors, etc.
-- The primary purpose of the abstraction is not to hide Chakra from consumers entirely. We have to bea realistic that Chakra is an implementation detail we can't fully abstract away. Our components libary is heavily depending on Chakra and its concepts inadvertedly leak to the consumer. You don't get around understanding Chakra concepts, for example you have to know what tokens are, you have to know how Chakra handles responsiveness, etc.
+- The primary purpose of the abstraction is not to hide Chakra from consumers entirely. We have to be realistic about the fact that Chakra is an implementation detail we can't fully abstract away. Our components library heavily depends on Chakra and its concepts inadvertently leak to the consumer. You don't get around understanding Chakra concepts; for example, you have to know what tokens are, you have to know how Chakra handles responsiveness, etc.
 - Chakra supplies raw components, accessible behaviour, composition mechanisms, recipes, style props, tokens, and implementation patterns. We do not intend to mirror Chakra. The component library decides which of those capabilities it promises to application developers and in which way.
-- We decide what the best surface is component by component. We don't have to mirror the underlying Chakra component behavior and props exactly. For example, just because Chakra offers great composability on a component, doesn't mean we can't expose the composability as a closed component. 
+- We decide what the best surface is component by component. We don't have to mirror the underlying Chakra component behavior and props exactly.
 - We choose to expose Chakra props deliberately when they are warranted (pick, not omit). A prop that is forwarded from Chakra is considered as part of the public stable interface, just like custom props are. We commit to treating all props as an equal abstraction. Just because we leverage a Chakra prop, does not mean we're leaking Chakra internals.
-- Interfaces are consistent. You roughly know what to expect for each component type. Props are strongly typed and well documented in Storybook.
+- Interfaces are consistent. You roughly know what to expect for each component type. Props are strongly typed and well documented in Storybook. We choose patterns that we want to follow and apply them consistently, e.g. the decision on the way we apply layout props (margins and paddings) is universal across the library.
 - Consumers of components-pkg use the Chakra docs only to understand the concepts. They should not be using the Chakra docs for deriving capabilities. Only the storybook, docs and interfaces of the library itself is authoritative.
 - Chakra documentation is primarily implementation material for component-library maintainers. This remains true when a library component deliberately uses Chakra naming or patterns.
 
@@ -63,7 +63,7 @@ The exposed interfaces should have consistent naming. We want to prevent some co
 
 By exposing Chakra props on our interfaces, we inherently adopted a v2-inspired starting point. Since the components-pkg is an abstraction by definition, there is no need to adopt v3 naming conventions. The adapters give us exactly the type of abstraction the component-pkg is set up to provide. Since we never considered the passed-through Chakra props as part of _our API_, changing Chakra internals leak to the consumer and create inconsistencies.
 
-Proposal: We make a decision for adopting Chakra v3 style props (and removing the adapters) vs. keeping v2 abstractions. We decide based on actual usage what the path of least resistance is. 
+Proposal: We make a decision for adopting Chakra v3 style props (and removing the adapters) vs. keeping v2 abstractions. We define the vocabulary that applies, rooting in reality at first and then move towards the desired target state.
 
 
 ### Expose all available props in Storybook
