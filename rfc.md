@@ -68,7 +68,7 @@ Proposal: We make a decision for adopting Chakra v3 style props (and removing th
 
 ### Expose all available props in Storybook
 
-In Storybook, we currently [intentionally filter out all Chakra props](.storybook/main.ts) and `as`, `asChild` and `recipe` are currently hidden globally. Consumers of components-pkg must be able to fully rely on Storybook as the authoritative source of truth.
+In Storybook, we for example [intentionally filter out all Chakra props, html and react props](.storybook/main.ts) and `as`, `asChild` and `recipe` are currently hidden globally. Consumers of components-pkg must be able to fully rely on Storybook as the authoritative source of truth.
 
 Proposed change: Expose all available props in Storybook to offer a complete documentation. Noise will be reduced by deliberately exposing only the necessary props, see below.
 
