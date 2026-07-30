@@ -105,6 +105,13 @@ These represent reusable product patterns. They are product-specific shared comp
 
 Proposed change: Now that we're in the monorepo, we can consider splitting these out of the component library and just put them in a "shared components" folder.
 
+### Design system foundations
+
+The package also provides design-system foundations: tokens and iconography.
+They are part of the public design system and should be considered alongside
+components, but their current interfaces do not require changes as part of this
+RFC.
+
 ### Ownership
 
 Enablement team volunteered to drive this RFC, owning the definitions and putting enforcement and guardrails for humans and agents in place.
@@ -130,6 +137,7 @@ I suggest keeping breaking changes and refactorings low and going the path of le
   - layout primitives (broad Chakra props exposed)
   - design system primitives (bespoke interfaces, selective Chakra props)
   - shared product components (bespoke interfaces, no Chakra props)
+  - design-system foundations: tokens and iconography
 - We define what Chakra props every layout primitive offers consistently (e.g., all).
 - We define a set of Chakra props every design system primitive offers consistently (if any by default).
 - We define a vocabulary for naming props (v2 vs v3 syntax), which also defines what to do with the adapters: keep or remove.
