@@ -87,6 +87,12 @@ These will likely be implemented as transparent Chakra exports. It's still impor
 
 Proposed change: People currently often find the set of props we pick on these restricting. We should decide to widen it.
 
+Implementation note: a few existing primitives also have an internal/public
+contract split—for example, Stack and SimpleGrid have broader package-root
+adapter contracts than their inner implementations. This is a follow-up
+canonicalisation concern, not a different interface philosophy or a reason to
+change the direction above.
+
 #### Design system primitives
 
 Examples: `Button`, `Input`, `Accordion`, `Dialog`, `Tabs`.
@@ -131,6 +137,8 @@ I suggest keeping breaking changes and refactorings low and going the path of le
   - design system primitives (bespoke interfaces, selective Chakra props)
   - shared product components (bespoke interfaces, no Chakra props)
 - We define what Chakra props every layout primitive offers consistently (e.g., all).
+- We make chosen public contracts canonical in their implementations, so
+  compatibility adapters do not silently maintain competing behaviour.
 - We define a set of Chakra props every design system primitive offers consistently (if any by default).
 - We define a vocabulary for naming props (v2 vs v3 syntax), which also defines what to do with the adapters: keep or remove.
 - These practices get documented for agents and humans alike.
