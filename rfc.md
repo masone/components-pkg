@@ -109,7 +109,7 @@ Proposed change: Now that we're in the monorepo, we can consider splitting these
 
 Enablement team volunteered to drive this RFC, owning the definitions and putting enforcement and guardrails for humans and agents in place.
 
-The components-pkg continues to be owned by the whole Frontend team. It falls on us collectively to keep this library sane. This includes designing good interfaces, writing healthy components and maintaining them, navigating Chakra updates, and managing breaking changes. Please make sure to invest in good interface design for new components and keep boy/girl scouting as part of your regular product work. Larger refactors like the one we're up against naturally fall into the Tech20 time bucket.
+The components-pkg continues to be owned by the whole Frontend team. It falls on us collectively to keep this library sane. This includes designing good interfaces, writing healthy components and maintaining them, navigating Chakra updates, and managing breaking changes. Interface design should conform to the type of component being built. It is on the builder to follow the correct patterns. Larger refactors like the one we're up against naturally fall into the Tech20 time bucket.
 
 ## Summary
 
