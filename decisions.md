@@ -6,3 +6,4 @@
 - [Layout primitive Chakra props](./rfc-decision-layout-primitive-props.md) — proposed
 - [Design-system primitive Chakra props](./rfc-decision-design-system-primitive-props.md) — exploring
 - [Inline style-object policy](./rfc-decision-inline-style-objects.md) — exploring
+- [Strict Chakra tokens](./rfc-decision-strict-chakra-tokens.md) — exploring
